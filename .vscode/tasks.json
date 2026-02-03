@@ -1,0 +1,61 @@
+﻿{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev:backend",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "${workspaceFolder}/scripts/dev-backend.sh"],
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}\\scripts\\dev-backend.ps1"
+        ]
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "dev"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev:frontend",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "${workspaceFolder}/scripts/dev-frontend.sh"],
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}\\scripts\\dev-frontend.ps1"
+        ]
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "dev"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev:all",
+      "dependsOrder": "parallel",
+      "dependsOn": ["dev:backend", "dev:frontend"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    }
+  ]
+}

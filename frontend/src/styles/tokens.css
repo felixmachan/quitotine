@@ -1,0 +1,16 @@
+﻿:root {
+  --font-display: "Sora", system-ui, sans-serif;
+  --font-serif: "Newsreader", Georgia, serif;
+  --color-ink: #0c141a;
+  --color-mist: #d5e2ea;
+  --color-aurora: #5ad7c5;
+  --color-glow: #8de7f6;
+  --color-deep: #0b2c31;
+  --gradient-hero: radial-gradient(circle at 15% 20%, rgba(90, 215, 197, 0.18), transparent 60%),
+    radial-gradient(circle at 80% 0%, rgba(141, 231, 246, 0.18), transparent 55%),
+    linear-gradient(160deg, #071018 0%, #0b2630 48%, #081a22 100%);
+  --shadow-soft: 0 12px 40px rgba(8, 20, 24, 0.35);
+  --shadow-glow: 0 0 60px rgba(141, 231, 246, 0.35);
+  --radius-pill: 999px;
+  --radius-card: 24px;
+}
