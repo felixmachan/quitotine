@@ -13,7 +13,7 @@ def create_access_token(user_id: str) -> str:
 
 
 def create_refresh_token(user_id: str) -> tuple[str, str]:
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expires_days)
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
     jti = uuid.uuid4().hex
     payload = {"sub": str(user_id), "exp": expire, "type": "refresh", "jti": jti}
     token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)

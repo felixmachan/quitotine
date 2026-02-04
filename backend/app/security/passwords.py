@@ -2,7 +2,7 @@
 from passlib.context import CryptContext
 from fastapi import HTTPException
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
@@ -14,7 +14,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def validate_password_strength(password: str) -> None:
-    if len(password) < 10:
+    if len(password) < 8:
         raise HTTPException(status_code=400, detail="Password too short")
     if not re.search(r"[A-Z]", password):
         raise HTTPException(status_code=400, detail="Password must include uppercase")

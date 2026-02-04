@@ -3,30 +3,29 @@
   heroSub: "A calm, private journey to rebuild your baseline.",
   statPrimary: "Hundreds of thousands try to quit every day.",
   statSecondary: "50–75% relapse within the first week.",
-  challenge: "Are you ready to be in the 25–50% who make it past week one?",
-  cta: "I'm ready to quit nicotine",
+  challenge: "Are you ready to be in the 25% who make it past week one?",
+  cta: "Let's get started",
   onboardingIntro: "Let's see your current nicotine profile.",
   onboarding: {
     product: "Which product do you use most?",
     duration: "How long have you been using?",
     amount: "Average daily amount",
-    startDate: "Quit start date",
-    goal: "Your goal"
+    goal: "Your goal",
+    name: "Your name"
   },
   summaryTitle: "Your starting point",
   summaryButton: "Continue",
-  skip: "Skip for now"
 };
 
 export const productOptions = [
-  "Cigarettes",
-  "Snus",
-  "Vape",
-  "Chewing tobacco",
-  "Other"
+  { id: "cigarette", label: "Cigarettes" },
+  { id: "snus", label: "Snus" },
+  { id: "vape", label: "Vape" },
+  { id: "chew", label: "Chewing tobacco" },
+  { id: "other", label: "Other" }
 ];
 
 export const goalOptions = [
-  { id: "reduce", label: "Reduce to zero", hint: "Step down over time" },
-  { id: "immediate", label: "Immediate zero", hint: "Stop fully now" }
+  { id: "reduce_to_zero", label: "Reduce to zero", hint: "Step down over time" },
+  { id: "immediate_zero", label: "Immediate zero", hint: "Stop fully now" }
 ];

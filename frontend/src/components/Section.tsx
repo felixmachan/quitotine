@@ -1,5 +1,5 @@
 ﻿import { ReactNode, useRef } from "react";
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { motion, useMotionTemplate, useReducedMotion, useScroll, useTransform } from "framer-motion";
 
 interface SectionProps {
   id: string;
@@ -25,6 +25,7 @@ export default function Section({ id, children, className = "", align = "center"
   const opacity = useTransform(scrollYProgress, [0.2, 0.5, 0.8], [0, 1, 0]);
   const y = useTransform(scrollYProgress, [0.2, 0.5, 0.8], [40, 0, -40]);
   const blur = useTransform(scrollYProgress, [0.2, 0.5, 0.8], [6, 0, 6]);
+  const filter = useMotionTemplate`blur(${blur}px)`;
 
   return (
     <section
@@ -40,7 +41,7 @@ export default function Section({ id, children, className = "", align = "center"
             : {
                 opacity,
                 y,
-                filter: blur.to((value) => `blur(${value}px)`)
+                filter
               }
         }
       >

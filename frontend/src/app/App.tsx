@@ -7,26 +7,32 @@ import OnboardingIntroScene from "../scenes/OnboardingIntroScene";
 import OnboardingProductScene from "../scenes/OnboardingProductScene";
 import OnboardingDurationScene from "../scenes/OnboardingDurationScene";
 import OnboardingAmountScene from "../scenes/OnboardingAmountScene";
-import OnboardingStartDateScene from "../scenes/OnboardingStartDateScene";
 import OnboardingGoalScene from "../scenes/OnboardingGoalScene";
 import OnboardingSummaryScene from "../scenes/OnboardingSummaryScene";
+import OnboardingNameScene from "../scenes/OnboardingNameScene";
+import OnboardingRegisterScene from "../scenes/OnboardingRegisterScene";
+import OnboardingReadyScene from "../scenes/OnboardingReadyScene";
 import ProgressRail from "../components/ProgressRail";
 import { useLocalStorage } from "./useLocalStorage";
 import { OnboardingData } from "./types";
+import { useThemeStage } from "./useThemeStage";
 
 const initialData: OnboardingData = {
   productType: "",
-  duration: "",
+  firstName: "",
+  lastName: "",
+  durationValue: null,
+  durationUnit: "years",
   dailyAmount: null,
-  dailyUnit: "units",
-  startDate: new Date().toISOString().slice(0, 10),
+  dailyUnit: "",
   goalType: ""
 };
 
 export default function App() {
   const [data, setData] = useLocalStorage<OnboardingData>("quitotine:onboarding", initialData);
-  const [completed, setCompleted] = useLocalStorage<boolean>("quitotine:onboarding:done", false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [registration, setRegistration] = useState({ email: "", password: "" });
+  const { stage, setStage } = useThemeStage();
   const sections = useMemo(
     () => [
       "hero",
@@ -37,9 +43,11 @@ export default function App() {
       "onboarding-product",
       "onboarding-duration",
       "onboarding-amount",
-      "onboarding-start",
       "onboarding-goal",
-      "onboarding-summary"
+      "onboarding-name",
+      "onboarding-register",
+      "onboarding-summary",
+      "onboarding-ready"
     ],
     []
   );
@@ -64,6 +72,25 @@ export default function App() {
     return () => observer.disconnect();
   }, [sections]);
 
+  useEffect(() => {
+    const normalized: Partial<OnboardingData> = {};
+    if (!["years", "months", "weeks"].includes(data.durationUnit)) normalized.durationUnit = "years";
+    if (data.durationValue != null && Number.isNaN(Number(data.durationValue))) {
+      normalized.durationValue = null;
+    }
+    if (typeof data.firstName !== "string") normalized.firstName = "";
+    if (typeof data.lastName !== "string") normalized.lastName = "";
+    if (!["cigarette", "snus", "vape", "chew", "other", ""].includes(data.productType as string)) {
+      normalized.productType = "";
+    }
+    if (!["reduce_to_zero", "immediate_zero", ""].includes(data.goalType as string)) {
+      normalized.goalType = "";
+    }
+    if (Object.keys(normalized).length) {
+      setData({ ...data, ...normalized });
+    }
+  }, [data, setData]);
+
   const scrollToOnboarding = () => {
     ctaRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -72,8 +99,47 @@ export default function App() {
     setData({ ...data, ...updates });
   };
 
+  const updateRegistration = (updates: Partial<typeof registration>) => {
+    setRegistration({ ...registration, ...updates });
+  };
+
+  const canRegister = registration.email.length > 3 && registration.password.length >= 8;
+
+  const submitRegistration = async () => {
+    setStage("started");
+    const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: registration.email,
+          password: registration.password
+        })
+      });
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Registration failed.");
+    }
+
+    if (!response.ok) {
+      let detail = "";
+      try {
+        detail = (await response.text()).trim();
+      } catch {
+        detail = "";
+      }
+      const suffix = detail ? `: ${detail}` : ` (HTTP ${response.status})`;
+      throw new Error(`Registration failed${suffix}.`);
+    }
+  };
+
   return (
-    <div className="relative min-h-screen text-mist">
+    <div className="relative min-h-screen text-mist" data-theme-stage={stage}>
+      <div className="app-background" aria-hidden="true">
+        <div className="noise-layer" />
+        <div className="vignette app-vignette" />
+      </div>
       <ProgressRail sections={sections} activeIndex={activeIndex} />
       <HeroScene id="hero" />
       <StatsScene id="stats" />
@@ -90,31 +156,47 @@ export default function App() {
       />
       <OnboardingDurationScene
         id="onboarding-duration"
-        value={data.duration}
-        onChange={(value) => updateData({ duration: value })}
+        value={data.durationValue}
+        unit={data.durationUnit}
+        onValue={(value) => updateData({ durationValue: value })}
+        onUnit={(value) => updateData({ durationUnit: value })}
       />
       <OnboardingAmountScene
         id="onboarding-amount"
+        productType={data.productType}
         amount={data.dailyAmount}
         unit={data.dailyUnit}
         onAmount={(value) => updateData({ dailyAmount: value })}
         onUnit={(value) => updateData({ dailyUnit: value })}
-      />
-      <OnboardingStartDateScene
-        id="onboarding-start"
-        value={data.startDate}
-        onChange={(value) => updateData({ startDate: value })}
       />
       <OnboardingGoalScene
         id="onboarding-goal"
         value={data.goalType}
         onChange={(value) => updateData({ goalType: value })}
       />
+      <OnboardingNameScene
+        id="onboarding-name"
+        firstName={data.firstName}
+        lastName={data.lastName}
+        onFirstName={(value) => updateData({ firstName: value })}
+        onLastName={(value) => updateData({ lastName: value })}
+      />
+      <OnboardingRegisterScene
+        id="onboarding-register"
+        email={registration.email}
+        password={registration.password}
+        onEmail={(value) => updateRegistration({ email: value })}
+        onPassword={(value) => updateRegistration({ password: value })}
+      />
       <OnboardingSummaryScene
         id="onboarding-summary"
         data={data}
-        completed={completed}
-        onComplete={() => setCompleted(true)}
+      />
+      <OnboardingReadyScene
+        id="onboarding-ready"
+        onCommit={submitRegistration}
+        disabled={!canRegister}
+        onSuccess={() => setStage("started")}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-﻿import Section from "../components/Section";
+import StickySection from "../components/StickySection";
 import { copy, goalOptions } from "../content/copy";
 import { GoalType } from "../app/types";
 
@@ -10,7 +10,7 @@ interface OnboardingGoalSceneProps {
 
 export default function OnboardingGoalScene({ id, value, onChange }: OnboardingGoalSceneProps) {
   return (
-    <Section id={id} align="center">
+    <StickySection id={id}>
       <div className="w-full max-w-4xl">
         <p className="mb-6 text-xs uppercase tracking-[0.3em] text-white/40">Step 5</p>
         <h2 className="mb-10 text-3xl font-semibold text-white sm:text-4xl">
@@ -37,10 +37,13 @@ export default function OnboardingGoalScene({ id, value, onChange }: OnboardingG
             );
           })}
         </div>
-        <button type="button" className="focus-ring mt-8 text-sm text-white/50 underline-offset-4 hover:text-white">
+        <button
+          type="button"
+          className="focus-ring mt-8 text-sm text-white/50 underline-offset-4 hover:text-white"
+        >
           {copy.skip}
         </button>
       </div>
-    </Section>
+    </StickySection>
   );
 }

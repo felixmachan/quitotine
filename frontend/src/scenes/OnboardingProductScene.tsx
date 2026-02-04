@@ -1,4 +1,4 @@
-﻿import Section from "../components/Section";
+import StickySection from "../components/StickySection";
 import { copy, productOptions } from "../content/copy";
 
 interface OnboardingProductSceneProps {
@@ -9,7 +9,7 @@ interface OnboardingProductSceneProps {
 
 export default function OnboardingProductScene({ id, value, onChange }: OnboardingProductSceneProps) {
   return (
-    <Section id={id} align="center">
+    <StickySection id={id}>
       <div className="w-full max-w-4xl">
         <p className="mb-6 text-xs uppercase tracking-[0.3em] text-white/40">Step 1</p>
         <h2 className="mb-10 text-3xl font-semibold text-white sm:text-4xl">
@@ -17,12 +17,12 @@ export default function OnboardingProductScene({ id, value, onChange }: Onboardi
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {productOptions.map((option) => {
-            const active = value === option;
+            const active = value === option.id;
             return (
               <button
-                key={option}
+                key={option.id}
                 type="button"
-                onClick={() => onChange(option)}
+                onClick={() => onChange(option.id)}
                 className={`focus-ring rounded-[24px] border px-6 py-6 text-left text-lg transition ${
                   active
                     ? "border-aurora/70 bg-white/10 text-white shadow-soft"
@@ -30,15 +30,18 @@ export default function OnboardingProductScene({ id, value, onChange }: Onboardi
                 }`}
                 aria-pressed={active}
               >
-                {option}
+                {option.label}
               </button>
             );
           })}
         </div>
-        <button type="button" className="focus-ring mt-8 text-sm text-white/50 underline-offset-4 hover:text-white">
+        <button
+          type="button"
+          className="focus-ring mt-8 text-sm text-white/50 underline-offset-4 hover:text-white"
+        >
           {copy.skip}
         </button>
       </div>
-    </Section>
+    </StickySection>
   );
 }

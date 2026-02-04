@@ -1,8 +1,8 @@
-﻿@tailwind base;
+@import "./tokens.css";
+
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import "./tokens.css";
 
 :root {
   color-scheme: dark;
@@ -14,7 +14,7 @@
 
 body {
   font-family: var(--font-display);
-  background: var(--gradient-hero);
+  background: #071821;
   color: var(--color-mist);
   min-height: 100vh;
   overflow-x: hidden;
@@ -22,6 +22,37 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+.app-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(1200px 700px at 30% 20%, rgba(80, 190, 198, 0.16), transparent 60%),
+    radial-gradient(1400px 800px at 80% 35%, rgba(50, 130, 170, 0.18), transparent 65%),
+    linear-gradient(165deg, rgba(6, 18, 26, 0.98) 0%, rgba(6, 16, 24, 0.98) 45%, rgba(5, 12, 18, 1) 100%);
+  background-size: 180% 180%;
+  animation: app-drift 120s ease-in-out infinite;
+}
+
+[data-theme-stage="started"] .app-background {
+  filter: brightness(1.05) saturate(1.05);
+}
+
+[data-theme-stage="started"] .app-background::after {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(700px 420px at 20% 20%, rgba(120, 240, 220, 0.08), transparent 70%),
+    radial-gradient(900px 520px at 80% 60%, rgba(100, 220, 210, 0.08), transparent 70%);
+  animation: stage-pulse 18s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.app-vignette {
+  opacity: 0.55;
 }
 
 .noise-layer {
@@ -46,6 +77,415 @@ body {
   padding: 0 6vw;
 }
 
+.section-inner-wide {
+  max-width: 1400px;
+  padding: 0 4vw;
+}
+
+.hero-ambient {
+  background:
+    radial-gradient(900px 520px at 50% 35%, rgba(150, 250, 242, 0.18), transparent 60%),
+    radial-gradient(900px 520px at 32% 18%, rgba(140, 248, 240, 0.18), transparent 60%),
+    radial-gradient(1100px 620px at 78% 38%, rgba(90, 190, 210, 0.2), transparent 65%);
+  background-size: 200% 200%;
+  animation: hero-drift 18s ease-in-out infinite;
+  filter: saturate(1.05);
+}
+
+.hero-content {
+  padding: clamp(10px, 2.5vw, 32px);
+}
+
+.hero-scrollhint {
+  bottom: 14vh;
+}
+
+@keyframes hero-drift {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 70% 40%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+@keyframes app-drift {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 60% 30%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+@keyframes stage-pulse {
+  0% {
+    opacity: 0.4;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate3d(0, -10px, 0) scale(1.02);
+  }
+  100% {
+    opacity: 0.4;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.commitment-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 320px;
+  height: 72px;
+  padding: 0 48px;
+  border-radius: 999px;
+  border: 1px solid rgba(116, 230, 215, 0.7);
+  background: rgba(58, 140, 136, 0.38);
+  color: #e9ffff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 20px 80px rgba(6, 20, 24, 0.35);
+}
+
+.commitment-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+
+.commitment-field {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  --commit-progress: 0;
+  --commit-x: 50vw;
+  --commit-y: 50vh;
+  --commit-btn-half: 36px;
+  --commit-text-gap: 28px;
+  --commit-sub-gap: 32px;
+}
+
+.commitment-field__wash {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(1200px 700px at 30% 20%, rgba(120, 240, 220, 0.12), transparent 65%),
+    radial-gradient(1400px 800px at 80% 35%, rgba(90, 200, 210, 0.12), transparent 70%);
+  opacity: calc(0.25 + var(--commit-progress) * 0.55);
+  animation: commitment-drift 22s ease-in-out infinite;
+  filter: blur(14px);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 1) 35%, transparent 90%);
+}
+
+.commitment-field__radial {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(
+    circle at var(--commit-x) var(--commit-y),
+    rgba(120, 240, 220, calc(0.12 + var(--commit-progress) * 0.35)),
+    rgba(15, 35, 44, 0) 60%
+  );
+  transition: opacity 0.3s ease;
+  filter: blur(10px);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 1) 40%, transparent 90%);
+}
+
+.commitment-field__bloom {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(140, 255, 240, 0.18), transparent 65%);
+  opacity: calc(0.05 + var(--commit-progress) * 0.35);
+  mix-blend-mode: screen;
+  filter: blur(18px);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 1) 30%, transparent 85%);
+}
+
+.commitment-field__pulse {
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(800px 420px at 30% 30%, rgba(90, 210, 200, 0.08), transparent 70%),
+    radial-gradient(900px 540px at 70% 70%, rgba(90, 200, 210, 0.08), transparent 70%);
+  animation: commitment-pulse 6s ease-in-out infinite;
+  opacity: calc(0.2 + var(--commit-progress) * 0.6);
+  filter: blur(12px);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 1) 40%, transparent 90%);
+}
+
+.commitment-field__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(120, 240, 220, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 240, 220, 0.06) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: calc(0.05 + var(--commit-progress) * 0.25);
+  mix-blend-mode: screen;
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 1) 35%, transparent 85%);
+}
+
+.commitment-field__rings {
+  position: absolute;
+  inset: -10%;
+  background-image: repeating-radial-gradient(
+    circle at center,
+    rgba(120, 240, 220, 0.08) 0px,
+    rgba(120, 240, 220, 0.08) 1px,
+    transparent 1px,
+    transparent 18px
+  );
+  opacity: calc(0.05 + var(--commit-progress) * 0.35);
+  filter: blur(2px);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 1) 30%, transparent 85%);
+  animation: commitment-rings 10s ease-in-out infinite;
+}
+
+.commitment-field__arc {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(70vmin, 680px);
+  height: min(70vmin, 680px);
+  transform: translate(-50%, -50%) rotate(-90deg);
+  border-radius: 999px;
+  background: conic-gradient(
+    rgba(120, 240, 220, 0.75) calc(var(--commit-progress) * 1turn),
+    rgba(120, 240, 220, 0.08) 0
+  );
+  mask: radial-gradient(circle, transparent 62%, black 63%);
+  filter: blur(0.2px);
+  opacity: calc(0.2 + var(--commit-progress) * 0.6);
+}
+
+.commitment-field__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0) 40%, rgba(2, 10, 14, 0.75) 85%);
+  opacity: calc(0.35 + var(--commit-progress) * 0.45);
+}
+
+.commitment-field__center {
+  position: absolute;
+  top: var(--commit-y);
+  left: var(--commit-x);
+  width: min(70vw, 620px);
+  transform: translate(-50%, -50%)
+    translateY(calc(-1 * (var(--commit-btn-half) + var(--commit-text-gap))));
+  text-align: center;
+  color: #f0fffd;
+}
+
+.commitment-field__below {
+  position: absolute;
+  top: var(--commit-y);
+  left: var(--commit-x);
+  width: min(60vw, 520px);
+  transform: translate(-50%, -50%)
+    translateY(calc(var(--commit-btn-half) + var(--commit-sub-gap)));
+  text-align: center;
+}
+
+/* ✅ inner animáció: ez már nem nyírja ki a pozícionálást */
+.commitment-field__centerInner,
+.commitment-field__belowInner {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: commitment-fade-up 0.8s ease-out forwards;
+}
+
+.commitment-field__centerInner {
+  animation-delay: 0.05s;
+}
+
+.commitment-field__belowInner {
+  animation-delay: 0.15s;
+}
+
+@keyframes commitment-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.commitment-field__below {
+  position: absolute;
+  top: var(--commit-y);
+  left: var(--commit-x);
+  width: min(60vw, 520px);
+  transform: translate(-50%, -50%) translateY(calc(var(--commit-btn-half) + var(--commit-sub-gap)));
+  text-align: center;
+}
+
+.commitment-ignite {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: radial-gradient(circle at center, rgba(160, 255, 240, 0.3), transparent 70%);
+  pointer-events: none;
+}
+
+.prep-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.prep-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(12px);
+  background: rgba(4, 12, 18, 0.78);
+}
+
+.prep-overlay__content {
+  position: relative;
+  z-index: 2;
+  width: min(900px, 80vw);
+  text-align: center;
+  color: #e6fffb;
+}
+
+.prep-overlay__title {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 600;
+  margin-bottom: 28px;
+}
+
+.prep-overlay__bar {
+  position: relative;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
+.prep-overlay__bar-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  background: linear-gradient(90deg, rgba(120, 240, 220, 0.9), rgba(120, 240, 220, 0.3));
+}
+
+.prep-overlay__bar-scan {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 120px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: prep-scan 2.4s linear infinite;
+  opacity: 0.6;
+}
+
+.prep-overlay__percent {
+  margin-top: 20px;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.prep-overlay__status {
+  margin-top: 16px;
+  font-size: 1rem;
+  color: rgba(220, 255, 248, 0.75);
+}
+
+.prep-overlay__status--error {
+  color: #ffb0b0;
+}
+
+.prep-overlay__subline {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: rgba(220, 255, 248, 0.5);
+}
+
+.prep-overlay__retry {
+  margin-top: 24px;
+  padding: 10px 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+@keyframes commitment-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+}
+
+@keyframes commitment-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-10px, 12px, 0) scale(1.03);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes prep-scan {
+  0% {
+    transform: translateX(-140%);
+  }
+  100% {
+    transform: translateX(140%);
+  }
+}
+
+@keyframes commitment-text-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes commitment-rings {
+  0% {
+    transform: scale(0.98);
+    opacity: 0.25;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(0.98);
+    opacity: 0.25;
+  }
+}
+
 .focus-ring:focus-visible {
   outline: 2px solid #8de7f6;
   outline-offset: 4px;
@@ -54,6 +494,14 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto;
+  }
+
+  .app-background {
+    animation: none;
+  }
+
+  .hero-ambient {
+    animation: none;
   }
 }
 
