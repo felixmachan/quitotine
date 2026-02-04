@@ -112,7 +112,7 @@ export default function RevealWord({ word, reveal }: RevealWordProps) {
       </motion.span>
       <motion.span
         className="absolute left-0 top-0 z-20 inline-block origin-left text-aurora"
-        style={{ transform: `scaleX(${mode === "reveal" ? revealScaleX : 1})` }}
+        style={{ transform: `scaleX(${mode === "word" ? 1 : revealScaleX})` }}
         animate={{ opacity: showOverlay ? 1 : 0 }}
         transition={{ duration: 0.15 }}
       >

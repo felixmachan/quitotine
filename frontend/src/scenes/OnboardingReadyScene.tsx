@@ -6,9 +6,18 @@ interface OnboardingReadySceneProps {
   onCommit: () => Promise<void>;
   disabled?: boolean;
   onSuccess?: () => void;
+  overlayMs?: number;
+  holdMs?: number;
 }
 
-export default function OnboardingReadyScene({ id, onCommit, disabled, onSuccess }: OnboardingReadySceneProps) {
+export default function OnboardingReadyScene({
+  id,
+  onCommit,
+  disabled,
+  onSuccess,
+  overlayMs,
+  holdMs
+}: OnboardingReadySceneProps) {
   return (
     <StickySection
       id={id}
@@ -23,6 +32,8 @@ export default function OnboardingReadyScene({ id, onCommit, disabled, onSuccess
           onCommit={onCommit}
           disabled={disabled}
           onSuccess={onSuccess}
+          overlayMs={overlayMs}
+          holdMs={holdMs}
         />
       </div>
     </StickySection>

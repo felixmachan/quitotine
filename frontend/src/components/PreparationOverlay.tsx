@@ -21,7 +21,7 @@ export default function PreparationOverlay({
   const percent = Math.round(clamped * 100);
 
   return (
-    <div className="prep-overlay" aria-live="polite">
+    <div className={`prep-overlay ${phase === "success" ? "prep-overlay--success" : ""}`} aria-live="polite">
       <div className="prep-overlay__backdrop" />
       <div className="prep-overlay__content">
         <p className="prep-overlay__title">Preparing your next stage</p>

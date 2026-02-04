@@ -12,6 +12,8 @@ import OnboardingSummaryScene from "../scenes/OnboardingSummaryScene";
 import OnboardingNameScene from "../scenes/OnboardingNameScene";
 import OnboardingRegisterScene from "../scenes/OnboardingRegisterScene";
 import OnboardingReadyScene from "../scenes/OnboardingReadyScene";
+import DashboardScene from "../scenes/DashboardScene";
+import KnowledgeScene from "../scenes/KnowledgeScene";
 import ProgressRail from "../components/ProgressRail";
 import { useLocalStorage } from "./useLocalStorage";
 import { OnboardingData } from "./types";
@@ -30,9 +32,16 @@ const initialData: OnboardingData = {
 
 export default function App() {
   const [data, setData] = useLocalStorage<OnboardingData>("quitotine:onboarding", initialData);
+  const [dashboardReady, setDashboardReady] = useLocalStorage<boolean>("quitotine:dashboardReady", false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [registration, setRegistration] = useState({ email: "", password: "" });
   const { stage, setStage } = useThemeStage();
+  const [route, setRoute] = useState(() => window.location.pathname);
+  const [dashboardEntered, setDashboardEntered] = useState(false);
+  const overlayMs = Number(import.meta.env.VITE_COMMIT_OVERLAY_MS);
+  const overlayMsValue = Number.isFinite(overlayMs) && overlayMs > 0 ? overlayMs : undefined;
+  const holdMs = Number(import.meta.env.VITE_COMMIT_HOLD_MS);
+  const holdMsValue = Number.isFinite(holdMs) && holdMs > 0 ? holdMs : undefined;
   const sections = useMemo(
     () => [
       "hero",
@@ -71,6 +80,21 @@ export default function App() {
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, [sections]);
+
+  useEffect(() => {
+    const handlePop = () => setRoute(window.location.pathname);
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
+
+  useEffect(() => {
+    if (!dashboardReady) {
+      setDashboardEntered(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setDashboardEntered(true), 80);
+    return () => window.clearTimeout(timer);
+  }, [dashboardReady]);
 
   useEffect(() => {
     const normalized: Partial<OnboardingData> = {};
@@ -134,70 +158,95 @@ export default function App() {
     }
   };
 
+  const navigate = (next: string) => {
+    window.history.pushState({}, "", next);
+    setRoute(next);
+  };
+
+  if (route === "/knowledge") {
+    return (
+      <div className="relative min-h-screen text-mist" data-theme-stage={stage}>
+        <div className="app-background" aria-hidden="true">
+          <div className="noise-layer" />
+          <div className="vignette app-vignette" />
+        </div>
+        <KnowledgeScene onBack={() => navigate("/")} />
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen text-mist" data-theme-stage={stage}>
       <div className="app-background" aria-hidden="true">
         <div className="noise-layer" />
         <div className="vignette app-vignette" />
       </div>
-      <ProgressRail sections={sections} activeIndex={activeIndex} />
-      <HeroScene id="hero" />
-      <StatsScene id="stats" />
-      <ChallengeScene id="challenge" />
-      <CTAScene id="cta" onCTA={scrollToOnboarding} />
+      <div className={`onboarding-flow ${dashboardReady ? "onboarding-flow--hidden" : ""}`}>
+        <ProgressRail sections={sections} activeIndex={activeIndex} />
+        <HeroScene id="hero" />
+        <StatsScene id="stats" />
+        <ChallengeScene id="challenge" />
+        <CTAScene id="cta" onCTA={scrollToOnboarding} />
 
-      <div ref={ctaRef}>
-        <OnboardingIntroScene id="onboarding-intro" />
+        <div ref={ctaRef}>
+          <OnboardingIntroScene id="onboarding-intro" />
+        </div>
+        <OnboardingProductScene
+          id="onboarding-product"
+          value={data.productType}
+          onChange={(value) => updateData({ productType: value })}
+        />
+        <OnboardingDurationScene
+          id="onboarding-duration"
+          value={data.durationValue}
+          unit={data.durationUnit}
+          onValue={(value) => updateData({ durationValue: value })}
+          onUnit={(value) => updateData({ durationUnit: value })}
+        />
+        <OnboardingAmountScene
+          id="onboarding-amount"
+          productType={data.productType}
+          amount={data.dailyAmount}
+          unit={data.dailyUnit}
+          onAmount={(value) => updateData({ dailyAmount: value })}
+          onUnit={(value) => updateData({ dailyUnit: value })}
+        />
+        <OnboardingGoalScene
+          id="onboarding-goal"
+          value={data.goalType}
+          onChange={(value) => updateData({ goalType: value })}
+        />
+        <OnboardingNameScene
+          id="onboarding-name"
+          firstName={data.firstName}
+          lastName={data.lastName}
+          onFirstName={(value) => updateData({ firstName: value })}
+          onLastName={(value) => updateData({ lastName: value })}
+        />
+        <OnboardingRegisterScene
+          id="onboarding-register"
+          email={registration.email}
+          password={registration.password}
+          onEmail={(value) => updateRegistration({ email: value })}
+          onPassword={(value) => updateRegistration({ password: value })}
+        />
+        <OnboardingSummaryScene id="onboarding-summary" data={data} />
+        <OnboardingReadyScene
+          id="onboarding-ready"
+          onCommit={submitRegistration}
+          disabled={!canRegister}
+          overlayMs={overlayMsValue}
+          holdMs={holdMsValue}
+          onSuccess={() => {
+            setStage("started");
+            setDashboardReady(true);
+          }}
+        />
       </div>
-      <OnboardingProductScene
-        id="onboarding-product"
-        value={data.productType}
-        onChange={(value) => updateData({ productType: value })}
-      />
-      <OnboardingDurationScene
-        id="onboarding-duration"
-        value={data.durationValue}
-        unit={data.durationUnit}
-        onValue={(value) => updateData({ durationValue: value })}
-        onUnit={(value) => updateData({ durationUnit: value })}
-      />
-      <OnboardingAmountScene
-        id="onboarding-amount"
-        productType={data.productType}
-        amount={data.dailyAmount}
-        unit={data.dailyUnit}
-        onAmount={(value) => updateData({ dailyAmount: value })}
-        onUnit={(value) => updateData({ dailyUnit: value })}
-      />
-      <OnboardingGoalScene
-        id="onboarding-goal"
-        value={data.goalType}
-        onChange={(value) => updateData({ goalType: value })}
-      />
-      <OnboardingNameScene
-        id="onboarding-name"
-        firstName={data.firstName}
-        lastName={data.lastName}
-        onFirstName={(value) => updateData({ firstName: value })}
-        onLastName={(value) => updateData({ lastName: value })}
-      />
-      <OnboardingRegisterScene
-        id="onboarding-register"
-        email={registration.email}
-        password={registration.password}
-        onEmail={(value) => updateRegistration({ email: value })}
-        onPassword={(value) => updateRegistration({ password: value })}
-      />
-      <OnboardingSummaryScene
-        id="onboarding-summary"
-        data={data}
-      />
-      <OnboardingReadyScene
-        id="onboarding-ready"
-        onCommit={submitRegistration}
-        disabled={!canRegister}
-        onSuccess={() => setStage("started")}
-      />
+
+      {dashboardReady ? (
+        <DashboardScene data={data} onOpenKnowledge={() => navigate("/knowledge")} entered={dashboardEntered} />
+      ) : null}
     </div>
   );
 }

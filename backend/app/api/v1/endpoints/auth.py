@@ -1,6 +1,7 @@
 ﻿from datetime import datetime, timedelta, timezone
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -19,22 +20,33 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
     validate_password_strength(payload.password)
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Registration failed")
+        raise HTTPException(status_code=400, detail="User already registered")
 
     user = User(email=payload.email, password_hash=hash_password(payload.password))
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="User already registered")
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}")
 
     access_token = create_access_token(user.id)
     refresh_token, jti = create_refresh_token(user.id)
 
-    db.add(RefreshToken(
-        user_id=user.id,
-        jti=jti,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expires_days),
-    ))
-    db.commit()
+    try:
+        db.add(RefreshToken(
+            user_id=user.id,
+            jti=jti,
+            expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
+        ))
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {exc}")
 
     return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
@@ -51,7 +63,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     db.add(RefreshToken(
         user_id=user.id,
         jti=jti,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expires_days),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
     ))
     db.commit()
 
@@ -81,7 +93,7 @@ def refresh(payload: TokenRefresh, db: Session = Depends(get_db)):
     db.add(RefreshToken(
         user_id=user_id,
         jti=new_jti,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expires_days),
+        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
     ))
     db.commit()
 

@@ -8,6 +8,7 @@ type Phase = "idle" | "pressing" | "committed" | "overlayLoading" | "success" | 
 interface LongPressCommitRitualProps {
   label: string;
   holdMs?: number;
+  overlayMs?: number;
   onCommit: () => Promise<void>;
   disabled?: boolean;
   onSuccess?: () => void;
@@ -25,6 +26,7 @@ const STATUS_LINES = [
 export default function LongPressCommitRitual({
   label,
   holdMs = 10000,
+  overlayMs = 1000,
   onCommit,
   disabled = false,
   onSuccess
@@ -134,7 +136,7 @@ export default function LongPressCommitRitual({
 
   useEffect(() => {
     if (phase !== "overlayLoading") return;
-    const overlayDuration = 10000;
+    const overlayDuration = overlayMs;
     const softCap = commitDoneRef.current ? 1 : 0.94;
     overlayStartRef.current = null;
 
@@ -183,13 +185,18 @@ export default function LongPressCommitRitual({
     };
   }, [phase]);
 
+  const isOverlayPhase = phase === "overlayLoading" || phase === "success";
+  const ritualProgress = isOverlayPhase ? Math.max(0.6, 1 - overlayProgress * 0.38) : progress;
+  const ritualExpand = isOverlayPhase ? 1 + overlayProgress * 0.35 : 1;
+
   const commitStyle = {
-    "--commit-progress": progress.toString(),
+    "--commit-progress": ritualProgress.toString(),
+    "--commit-expand": ritualExpand.toString(),
     "--commit-x": `${origin.x}px`,
     "--commit-y": `${origin.y}px`
   } as React.CSSProperties;
 
-  const showField = phase === "pressing" || phase === "committed";
+  const showField = phase === "pressing" || phase === "committed" || phase === "overlayLoading" || phase === "success";
 
   const portalTarget = typeof document !== "undefined" ? document.body : null;
 
