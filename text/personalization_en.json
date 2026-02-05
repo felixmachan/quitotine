@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "language": "en",
+    "usage": "Quitotine personalization and interpretation copy"
+  },
+  "stages": [
+    {
+      "dayMin": 1,
+      "dayMax": 3,
+      "headline": "Nervous system settling",
+      "summary": "At this stage, it is common that your body feels alert, restless, or tense. What you are experiencing now usually means your nervous system is recalibrating.",
+      "reassurance": "Nothing is wrong — this phase typically passes when sleep and hydration steady.",
+      "focus": "Keep routines simple. Reduce demands and protect recovery windows."
+    },
+    {
+      "dayMin": 4,
+      "dayMax": 7,
+      "headline": "Withdrawal peak normalization",
+      "summary": "At this stage, withdrawal signals can peak and feel erratic. What you are experiencing now usually means your system is clearing the last strong chemical cues.",
+      "reassurance": "Nothing is wrong — this phase typically passes as the first week closes.",
+      "focus": "Normalize the spikes. Short, repeated resets beat long battles."
+    },
+    {
+      "dayMin": 8,
+      "dayMax": 21,
+      "headline": "Habit decoupling",
+      "summary": "At this stage, cravings are often more contextual than chemical. What you are experiencing now usually means old cues are losing power.",
+      "reassurance": "Nothing is wrong — this phase typically passes as new routines become automatic.",
+      "focus": "Replace the cue, not the willpower. Keep the day predictable."
+    },
+    {
+      "dayMin": 22,
+      "dayMax": 29,
+      "headline": "Identity shift",
+      "summary": "At this stage, the mind starts to accept a new baseline. What you are experiencing now usually means identity is catching up to behavior.",
+      "reassurance": "Nothing is wrong — this phase typically passes as the new normal feels quieter.",
+      "focus": "Act like the new baseline is already true. Keep it understated."
+    },
+    {
+      "dayMin": 30,
+      "dayMax": null,
+      "headline": "Baseline recalibration",
+      "summary": "At this stage, the system is rebalancing without constant noise. What you are experiencing now usually means your baseline is stabilizing.",
+      "reassurance": "Nothing is wrong — this phase typically passes as confidence becomes quiet.",
+      "focus": "Protect the baseline. No pressure, just consistency."
+    }
+  ],
+  "adaptiveSignals": {
+    "noData": {
+      "title": "Today's signal",
+      "body": "Log a check-in to tune your signal for today.",
+      "support": "A small entry is enough for the system to respond."
+    },
+    "cravingsHighMoodStable": {
+      "title": "Today's signal",
+      "body": "This looks like a conditioned habit spike, not withdrawal.",
+      "support": "Reduce cues for the next 2 hours and keep movement light."
+    },
+    "moodLowCravingsLow": {
+      "title": "Today's signal",
+      "body": "This is more likely nervous system fatigue than nicotine need.",
+      "support": "Lower demands and protect rest. The chemistry is already shifting."
+    },
+    "bothHigh": {
+      "title": "Today's signal",
+      "body": "This is a normal adjustment window. Reduce demands today.",
+      "support": "Keep things simple and let the wave pass."
+    },
+    "stable": {
+      "title": "Today's signal",
+      "body": "The system is quiet today. Keep routines steady.",
+      "support": "This is how baseline recalibration feels."
+    },
+    "default": {
+      "title": "Today's signal",
+      "body": "Your system is adjusting in its own rhythm.",
+      "support": "Small, steady routines are doing the work."
+    }
+  },
+  "milestones": [
+    {
+      "day": 3,
+      "title": "Nicotine has cleared",
+      "description": "By day 3 most nicotine is out; cravings still spike but pass quickly."
+    },
+    {
+      "day": 5,
+      "title": "Carbon monoxide drops",
+      "description": "Oxygen delivery improves as CO clears, easing early fatigue."
+    },
+    {
+      "day": 7,
+      "title": "Cravings peak window closing",
+      "description": "The first-week surge softens as your baseline stress response calms."
+    },
+    {
+      "day": 10,
+      "title": "Taste and smell return",
+      "description": "Sensory recovery becomes more noticeable as receptors reset."
+    },
+    {
+      "day": 14,
+      "title": "Sleep stabilizing",
+      "description": "Withdrawal-driven sleep disruption eases with steady routines."
+    },
+    {
+      "day": 21,
+      "title": "Stress response steadies",
+      "description": "Cortisol swings soften when routines become predictable."
+    },
+    {
+      "day": 28,
+      "title": "Dopamine receptors rebalance",
+      "description": "Reward circuits start normalizing, making cues feel less urgent."
+    },
+    {
+      "day": 42,
+      "title": "Cue pathways weaken",
+      "description": "Environmental triggers lose power with repetition and distance."
+    },
+    {
+      "day": 60,
+      "title": "Cue reactivity quiets",
+      "description": "Triggers lose power as new patterns are reinforced."
+    },
+    {
+      "day": 90,
+      "title": "New baseline holds",
+      "description": "Craving intensity and frequency drop as identity shifts."
+    }
+  ],
+  "spikeMode": {
+    "title": "Spike mode",
+    "subtitle": "Short, concrete steps for the next 20 minutes.",
+    "steps": [
+      "Slow the breath for 60 seconds.",
+      "Drink water and change your room or posture.",
+      "Do one craving tool, then reassess."
+    ],
+    "note": "No long-term thinking needed right now. Just the next step."
+  },
+  "insights": {
+    "empty": "Log a few days to unlock interpretation.",
+    "cravingsEase": "Cravings have softened compared with last week.",
+    "cravingsRise": "Cravings were higher this week; protect routines and keep demands low.",
+    "cravingsSteady": "Cravings are holding steady week to week.",
+    "moodLower": "On higher-craving days, mood runs about {delta} points lower.",
+    "moodStable": "Mood holds steady even when cravings rise.",
+    "timeOfDay": "Higher cravings tend to appear in the {window}."
+  },
+  "reflections": {
+    "empty": "Log a few days to see reflections here.",
+    "weekAgo": "A week ago you wrote: \"{excerpt}\" Does this still feel true?",
+    "recovery": "Difficult days are usually followed by recovery within {days} days.",
+    "moodUp": "Your mood recovers faster now than earlier.",
+    "moodDown": "This week has been heavier; lighter days return as the system stabilizes.",
+    "moodSteady": "Your mood is steady relative to earlier weeks."
+  }
+}

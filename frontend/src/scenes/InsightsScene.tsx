@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { OnboardingData } from "../app/types";
 import { useLocalStorage } from "../app/useLocalStorage";
 import { buildQuitPlan, getJourneyProgress, type JournalEntry, type QuitPlan } from "../app/quitLogic";
+import { getInsightsSummary } from "../app/personalization";
 import AppNav from "../components/AppNav";
 import InsightsCard from "../components/InsightsCard";
 
@@ -34,8 +35,18 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     }
   }, [plan, dailyUnits, useDays, setPlan]);
 
+  useEffect(() => {
+    document.body.dataset.themeMode = mode;
+    return () => {
+      if (document.body.dataset.themeMode === mode) {
+        delete document.body.dataset.themeMode;
+      }
+    };
+  }, [mode]);
+
   const activePlan = plan ?? buildQuitPlan({ dailyUnits, useDays, mgPerUnit: 8 });
   const { progress } = getJourneyProgress(activePlan);
+  const summaries = useMemo(() => getInsightsSummary(journalEntries), [journalEntries]);
 
   return (
     <div
@@ -78,8 +89,8 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             <div className="plan-timeline">
               {activePlan.phases.map((phase) => (
                 <div key={phase.title} className="plan-phase">
+                  <span className="plan-range">{phase.range}</span>
                   <strong>{phase.title}</strong>
-                  <span>{phase.range}</span>
                   <p>{phase.focus}</p>
                 </div>
               ))}
@@ -87,7 +98,19 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             <div className="plan-footnote">Next milestone in ~7 days</div>
           </div>
 
-          <div className="dashboard-card insight-card" style={{ ["--card-index" as string]: 2 }}>
+          <div className="dashboard-card insight-summary-card" style={{ ["--card-index" as string]: 2 }}>
+            <div className="card-header">
+              <h3>Interpretation</h3>
+              <span className="card-subtitle">What this means for you</span>
+            </div>
+            <div className="insight-summary">
+              {summaries.map((line, index) => (
+                <p key={`${line}-${index}`}>{line}</p>
+              ))}
+            </div>
+          </div>
+
+          <div className="dashboard-card insight-card" style={{ ["--card-index" as string]: 3 }}>
             <div className="card-header">
               <h3>Signals this week</h3>
               <span className="card-subtitle">What is shifting right now</span>

@@ -29,7 +29,12 @@ export default function InsightsCard({ entries }: InsightsCardProps) {
       <div className="insights-chart">
         {recent.map((item) => (
           <div key={item.date} className="insight-bar">
-            <span style={{ height: `${(item.cravings / maxCravings) * 100}%` }} />
+            <span
+              style={{
+                height: `${(item.cravings / maxCravings) * 100}%`,
+                minHeight: item.cravings > 0 ? 6 : 0
+              }}
+            />
             <em>{item.cravings}</em>
           </div>
         ))}

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import AppNav from "../components/AppNav";
 import { useLocalStorage } from "../app/useLocalStorage";
 
@@ -44,6 +45,16 @@ type ThemeMode = "dark" | "light";
 
 export default function ScienceScene({ activeRoute, onNavigate, entered = false }: ScienceSceneProps) {
   const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", "dark");
+
+  useEffect(() => {
+    document.body.dataset.themeMode = mode;
+    return () => {
+      if (document.body.dataset.themeMode === mode) {
+        delete document.body.dataset.themeMode;
+      }
+    };
+  }, [mode]);
+
   return (
     <div className={`dashboard-shell ${entered ? "dashboard-shell--enter" : ""}`} data-theme-mode={mode}>
       <div className="dashboard-backdrop" aria-hidden="true" />
