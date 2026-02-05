@@ -13,7 +13,9 @@ import OnboardingNameScene from "../scenes/OnboardingNameScene";
 import OnboardingRegisterScene from "../scenes/OnboardingRegisterScene";
 import OnboardingReadyScene from "../scenes/OnboardingReadyScene";
 import DashboardScene from "../scenes/DashboardScene";
-import KnowledgeScene from "../scenes/KnowledgeScene";
+import InsightsScene from "../scenes/InsightsScene";
+import ScienceScene from "../scenes/ScienceScene";
+import DiaryScene from "../scenes/DiaryScene";
 import ProgressRail from "../components/ProgressRail";
 import { useLocalStorage } from "./useLocalStorage";
 import { OnboardingData } from "./types";
@@ -158,19 +160,64 @@ export default function App() {
     }
   };
 
-  const navigate = (next: string) => {
-    window.history.pushState({}, "", next);
-    setRoute(next);
+  const navigate = (next: string, replace = false) => {
+    const target = next === "/knowledge" ? "/science" : next;
+    if (replace) {
+      window.history.replaceState({}, "", target);
+    } else {
+      window.history.pushState({}, "", target);
+    }
+    setRoute(target);
   };
 
-  if (route === "/knowledge") {
+  useEffect(() => {
+    if (route === "/knowledge") {
+      navigate("/science", true);
+      return;
+    }
+    if (!dashboardReady && route !== "/") {
+      navigate("/", true);
+      return;
+    }
+    if (dashboardReady && route === "/") {
+      navigate("/dashboard", true);
+    }
+  }, [dashboardReady, route]);
+
+  if (route === "/science") {
     return (
       <div className="relative min-h-screen text-mist" data-theme-stage={stage}>
         <div className="app-background" aria-hidden="true">
           <div className="noise-layer" />
           <div className="vignette app-vignette" />
         </div>
-        <KnowledgeScene onBack={() => navigate("/")} />
+        <ScienceScene activeRoute={route} onNavigate={navigate} entered={dashboardEntered} />
+      </div>
+    );
+  }
+
+  if (route === "/insights") {
+    return (
+      <div className="relative min-h-screen text-mist" data-theme-stage={stage}>
+        <div className="app-background" aria-hidden="true">
+          <div className="noise-layer" />
+          <div className="vignette app-vignette" />
+        </div>
+        {dashboardReady ? (
+          <InsightsScene data={data} activeRoute={route} onNavigate={navigate} entered={dashboardEntered} />
+        ) : null}
+      </div>
+    );
+  }
+
+  if (route === "/diary") {
+    return (
+      <div className="relative min-h-screen text-mist" data-theme-stage={stage}>
+        <div className="app-background" aria-hidden="true">
+          <div className="noise-layer" />
+          <div className="vignette app-vignette" />
+        </div>
+        <DiaryScene activeRoute={route} onNavigate={navigate} entered={dashboardEntered} />
       </div>
     );
   }
@@ -245,7 +292,7 @@ export default function App() {
       </div>
 
       {dashboardReady ? (
-        <DashboardScene data={data} onOpenKnowledge={() => navigate("/knowledge")} entered={dashboardEntered} />
+        <DashboardScene data={data} activeRoute={route} onNavigate={navigate} entered={dashboardEntered} />
       ) : null}
     </div>
   );

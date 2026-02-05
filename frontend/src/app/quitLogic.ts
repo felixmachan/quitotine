@@ -34,6 +34,7 @@ export interface JournalEntry {
   mood: number;
   cravings: number;
   note: string;
+  createdAt?: string;
 }
 
 const MS_PER_DAY = 86_400_000;

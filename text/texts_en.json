@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "language": "en",
+    "source_style": "Allen Carr method – paraphrased, original wording",
+    "usage": "Quitotine app – onboarding, dashboard, knowledge base",
+    "note": "No direct quotes. Conceptual reformulation for UX use."
+  },
+  "categories": {
+    "belief_reframing": {
+      "title": "Reframing Core Beliefs",
+      "content": [
+        "Nicotine doesn’t add anything to your life; it only temporarily removes a discomfort that it created in the first place.",
+        "What feels like relief is usually just the end of withdrawal, not a real benefit.",
+        "When this becomes clear, quitting stops feeling like sacrifice and starts feeling like release.",
+        "You are not giving up something valuable, only stepping out of a self-maintaining loop.",
+        "The sense of loss fades when you realize nothing meaningful was taken away.",
+        "This realization is often the first step from mental darkness into clarity."
+      ]
+    },
+    "craving_understanding": {
+      "title": "Understanding Cravings",
+      "content": [
+        "A craving is not a need; it is a learned signal your brain sends out of habit.",
+        "It does not mean you require nicotine, only that your system expects a familiar response.",
+        "Cravings rise, peak, and fall on their own, even if you do nothing.",
+        "Each time you don’t respond automatically, the signal weakens.",
+        "You don’t need to be strong all day — only for the few minutes the wave passes.",
+        "Every craving you ride through moves you closer to calm and mental lightness."
+      ]
+    },
+    "fear_reduction": {
+      "title": "Reducing Fear",
+      "content": [
+        "Most fears around quitting are imagined rather than experienced.",
+        "The mind tends to exaggerate discomfort and underestimate adaptability.",
+        "Your body is far more capable of adjusting than you expect.",
+        "Early uncertainty is not danger; it is transition.",
+        "As days pass, fear usually gives way to relief.",
+        "Much of the darkness here is habit-based, not reality-based."
+      ]
+    },
+    "identity_shift": {
+      "title": "Identity Shift",
+      "content": [
+        "You are not someone constantly fighting nicotine; you are someone who simply doesn’t use it.",
+        "Identity change happens quietly, through understanding rather than force.",
+        "When you stop seeing yourself as ‘quitting,’ inner tension drops.",
+        "You no longer need to decide every day — the baseline has changed.",
+        "This is where freedom becomes natural instead of effortful.",
+        "The light here is not visual anymore, but part of how you see yourself."
+      ]
+    },
+    "relapse_kindness": {
+      "title": "Responding to Slips with Kindness",
+      "content": [
+        "A slip does not erase progress; it provides information.",
+        "You did not return to the start — you learned something about your triggers.",
+        "What matters most is not what happened, but what happens next.",
+        "Self-blame deepens the darkness; understanding shortens it.",
+        "The system is designed to guide you forward, not punish you.",
+        "The light doesn’t go out — it may dim briefly, but it remains."
+      ]
+    },
+    "coping_tools": {
+      "title": "Coping Tools",
+      "content": [
+        "During cravings, you don’t need to solve anything — only to stay present.",
+        "Simple actions like breathing, movement, or distraction are enough.",
+        "Perfection is unnecessary; interruption is enough.",
+        "Every alternative response builds a new pattern.",
+        "Over time, these tools become automatic and effortless.",
+        "Old dark reflexes are replaced with lighter, conscious responses."
+      ]
+    },
+    "progress_validation": {
+      "title": "Validating Progress",
+      "content": [
+        "Most progress is quiet and internal, not dramatic.",
+        "There is less background noise, fewer urges, and more space to choose.",
+        "You may not feel it every day, but the system is changing.",
+        "Light does not arrive suddenly; it grows steadily.",
+        "Calm often appears without announcement.",
+        "The greatest success is no longer having to fight."
+      ]
+    },
+    "science_light": {
+      "title": "Science, Explained Simply",
+      "content": [
+        "Nicotine creates fast dopamine spikes that the brain learns to expect.",
+        "When intake stops, the brain gradually rebalances its own systems.",
+        "This adjustment is natural and inevitable.",
+        "Many cravings are conditioned habits rather than chemical necessity.",
+        "Time is your strongest ally in this process.",
+        "Biology itself works toward clarity and balance."
+      ]
+    }
+  }
+}

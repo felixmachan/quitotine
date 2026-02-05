@@ -16,7 +16,7 @@ export default function JournalCard({ entries, onSave }: JournalCardProps) {
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
-    onSave({ date: today, mood, cravings, note });
+    onSave({ date: today, mood, cravings, note, createdAt: new Date().toISOString() });
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1500);
   };

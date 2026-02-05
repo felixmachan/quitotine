@@ -6,18 +6,19 @@ import {
   computePenaltyDays,
   getJourneyProgress,
   stageContentForDay,
-  toIsoDate,
   type JournalEntry,
   type QuitPlan,
   type RelapseEvent
 } from "../app/quitLogic";
+import AppNav from "../components/AppNav";
 import CravingToolkit from "../components/CravingToolkit";
 import JournalCard from "../components/JournalCard";
-import InsightsCard from "../components/InsightsCard";
+import texts from "../../../text/texts_en.json";
 
 interface DashboardSceneProps {
   data: OnboardingData;
-  onOpenKnowledge: () => void;
+  activeRoute: string;
+  onNavigate: (route: string) => void;
   entered?: boolean;
 }
 
@@ -25,10 +26,63 @@ type ThemeMode = "dark" | "light";
 
 const RELAPSE_TAGS = ["stress", "social", "boredom", "fatigue", "trigger"] as const;
 
-export default function DashboardScene({ data, onOpenKnowledge, entered = false }: DashboardSceneProps) {
+const MILESTONES = [
+  {
+    day: 3,
+    title: "Nicotine has cleared",
+    description: "By day 3 most nicotine is out; cravings still spike but pass quickly."
+  },
+  {
+    day: 5,
+    title: "Carbon monoxide drops",
+    description: "Oxygen delivery improves as CO clears, easing early fatigue."
+  },
+  {
+    day: 7,
+    title: "Cravings peak window closing",
+    description: "The first-week surge softens as your baseline stress response calms."
+  },
+  {
+    day: 10,
+    title: "Taste and smell return",
+    description: "Sensory recovery becomes more noticeable as receptors reset."
+  },
+  {
+    day: 14,
+    title: "Sleep stabilizing",
+    description: "Withdrawal-driven sleep disruption eases with steady routines."
+  },
+  {
+    day: 21,
+    title: "Stress response steadies",
+    description: "Cortisol swings soften when routines become predictable."
+  },
+  {
+    day: 28,
+    title: "Dopamine receptors rebalance",
+    description: "Reward circuits start normalizing, making cues feel less urgent."
+  },
+  {
+    day: 42,
+    title: "Cue pathways weaken",
+    description: "Environmental triggers lose power with repetition and distance."
+  },
+  {
+    day: 60,
+    title: "Cue reactivity quiets",
+    description: "Triggers lose power as new patterns are reinforced."
+  },
+  {
+    day: 90,
+    title: "New baseline holds",
+    description: "Craving intensity and frequency drop as identity shifts."
+  }
+];
+
+export default function DashboardScene({ data, activeRoute, onNavigate, entered = false }: DashboardSceneProps) {
   const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
   const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
-  const [relapseLog, setRelapseLog] = useLocalStorage<RelapseEvent[]>("quitotine:relapse", []);
+  const [, setRelapseLog] = useLocalStorage<RelapseEvent[]>("quitotine:relapse", []);
   const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", "dark");
   const [showRelapse, setShowRelapse] = useState(false);
   const [relapseTags, setRelapseTags] = useState<string[]>([]);
@@ -100,11 +154,35 @@ export default function DashboardScene({ data, onOpenKnowledge, entered = false 
         ? `${Math.round(activePlan.useDays / 30.4)} months`
         : `${activePlan.useDays} days`;
 
+  const milestoneStates = useMemo(() => {
+    const capped = MILESTONES.filter((milestone) => milestone.day <= activePlan.durationDays);
+    const currentIndex = capped.reduce((acc, milestone, index) => (milestone.day <= dayIndex ? index : acc), -1);
+    return capped.map((milestone, index) => ({
+      ...milestone,
+      position: Math.min(1, milestone.day / activePlan.durationDays),
+      state: index < currentIndex ? "past" : index === currentIndex ? "current" : "future"
+    }));
+  }, [activePlan.durationDays, dayIndex]);
+
+  const { dailyLine, beliefLine, beliefTitle } = useMemo(() => {
+    const categories = texts.categories ?? {};
+    const allLines = Object.values(categories).flatMap((item) => item.content ?? []);
+    const belief = categories.belief_reframing;
+    const beliefLines = belief?.content ?? [];
+    const now = new Date();
+    const daySeed = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86_400_000);
+    const dailyLineIndex = allLines.length ? daySeed % allLines.length : 0;
+    const beliefIndex = beliefLines.length ? daySeed % beliefLines.length : 0;
+    return {
+      dailyLine: allLines[dailyLineIndex] ?? "",
+      beliefLine: beliefLines[beliefIndex] ?? "",
+      beliefTitle: belief?.title ?? "Belief reframing"
+    };
+  }, []);
+
   return (
     <div
-      className={`dashboard-shell ${entered ? "dashboard-shell--enter" : ""} ${
-        relapsePulse ? "dashboard-shell--dip" : ""
-      }`}
+      className={`dashboard-shell ${entered ? "dashboard-shell--enter" : ""} ${relapsePulse ? "dashboard-shell--dip" : ""}`}
       data-theme-mode={mode}
       style={
         {
@@ -114,28 +192,67 @@ export default function DashboardScene({ data, onOpenKnowledge, entered = false 
       }
     >
       <div className="dashboard-backdrop" aria-hidden="true" />
-      <div className="dashboard-content">
+      <div className="dashboard-wide">
         <header className="dashboard-header">
           <div>
             <p className="dashboard-kicker">Quitotine dashboard</p>
             <h1>Day {planDayLabel}</h1>
           </div>
           <div className="dashboard-actions">
+            <AppNav active={activeRoute} onNavigate={onNavigate} />
             <button type="button" className="ghost-button" onClick={() => setMode(mode === "dark" ? "light" : "dark")}>
               {mode === "dark" ? "Light mode" : "Dark mode"}
-            </button>
-            <button type="button" className="ghost-button" onClick={onOpenKnowledge}>
-              Knowledge base
             </button>
           </div>
         </header>
 
+        <section className="timeline-panel" aria-label="Quit journey timeline">
+          <div className="timeline-header">
+            <div>
+              <p className="timeline-kicker">Your quit journey</p>
+              <h2>Day {dayIndex} of {activePlan.durationDays}</h2>
+            </div>
+            <div className="timeline-meta">
+              <span>{Math.round(progress * 100)}% complete</span>
+              <span>Baseline {baselineLabel}</span>
+            </div>
+          </div>
+          <div className="timeline-bar">
+            <div className="timeline-progress" />
+            <div className="timeline-now" aria-hidden="true" />
+            {milestoneStates.map((milestone) => (
+              <div
+                key={milestone.title}
+                className={`timeline-marker timeline-marker--${milestone.state}`}
+                style={{ ["--marker-pos" as string]: milestone.position }}
+              >
+                <button type="button" className="timeline-marker__dot" aria-label={milestone.title}>
+                  <span className="timeline-tooltip">
+                    <span className="timeline-tooltip__day">Day {milestone.day}</span>
+                    <strong>{milestone.title}</strong>
+                    <em>{milestone.description}</em>
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="timeline-notes">
+            <div className="timeline-note">
+              <span className="timeline-note__label">Daily focus</span>
+              <p>{dailyLine}</p>
+            </div>
+            <div className="timeline-note">
+              <span className="timeline-note__label">{beliefTitle}</span>
+              <p>{beliefLine}</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="dashboard-content">
         <div className="dashboard-grid">
           <div className="dashboard-card hero-card" style={{ ["--card-index" as string]: 0 }}>
             <div className="hero-top">
-              <div className="progress-ring" style={{ ["--progress" as string]: progress }}>
-                <span>{Math.round(progress * 100)}%</span>
-              </div>
               <div className="hero-meta">
                 <span className="severity-badge">{activePlan.severityLabel}</span>
                 <p>Baseline: {baselineLabel}</p>
@@ -209,35 +326,12 @@ export default function DashboardScene({ data, onOpenKnowledge, entered = false 
             ) : null}
           </div>
 
-          <div className="dashboard-card plan-card" style={{ ["--card-index" as string]: 1 }}>
-            <div className="card-header">
-              <h3>Personalized plan</h3>
-              <span className="card-subtitle">Weekly reduction ~{Math.round(activePlan.weeklyReduction * 100)}%</span>
-            </div>
-            <div className="plan-timeline">
-              {activePlan.phases.map((phase) => (
-                <div key={phase.title} className="plan-phase">
-                  <strong>{phase.title}</strong>
-                  <span>{phase.range}</span>
-                  <p>{phase.focus}</p>
-                </div>
-              ))}
-            </div>
-            <div className="plan-footnote">
-              Next milestone: {toIsoDate(new Date(Date.now() + 7 * 86_400_000))}
-            </div>
-          </div>
-
-          <div ref={toolkitRef} style={{ ["--card-index" as string]: 2 }}>
+          <div ref={toolkitRef} style={{ ["--card-index" as string]: 1 }}>
             <CravingToolkit />
           </div>
 
-          <div ref={journalRef} style={{ ["--card-index" as string]: 3 }}>
+          <div ref={journalRef} style={{ ["--card-index" as string]: 2 }}>
             <JournalCard entries={journalEntries} onSave={handleJournalSave} />
-          </div>
-
-          <div style={{ ["--card-index" as string]: 4 }}>
-            <InsightsCard entries={journalEntries} />
           </div>
         </div>
       </div>
