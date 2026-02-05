@@ -4,12 +4,12 @@ type ToolKey = "breathing" | "surfing" | "micro";
 
 const TOOL_CONFIG: Record<ToolKey, { title: string; duration: number; guidance: string[] }> = {
   breathing: {
-    title: "60s breathing",
+    title: "Breathing Reset",
     duration: 60,
-    guidance: ["Inhale 4s", "Hold 4s", "Exhale 6s", "Shoulders down."]
+    guidance: ["Inhale — 4 sec", "Hold — 4 sec", "Exhale — 6 sec", "Shoulders down."]
   },
   surfing: {
-    title: "90s urge surfing",
+    title: "Urge Surfing",
     duration: 90,
     guidance: ["Notice the peak", "Name the sensation", "Let it roll through."]
   },
@@ -27,6 +27,7 @@ export default function CravingToolkit() {
   const [completedTool, setCompletedTool] = useState<ToolKey | null>(null);
 
   const isRunning = activeTool !== null && secondsLeft > 0;
+  const formatDuration = (seconds: number) => `${seconds} sec`;
 
   useEffect(() => {
     if (!isRunning) return;
@@ -70,7 +71,7 @@ export default function CravingToolkit() {
               onClick={() => startTool(key)}
             >
               <span className="toolkit-title">{config.title}</span>
-              <span className="toolkit-duration">{config.duration}s</span>
+              <span className="toolkit-duration">{formatDuration(config.duration)}</span>
             </button>
           );
         })}
@@ -79,8 +80,11 @@ export default function CravingToolkit() {
       {tool ? (
         <div className="toolkit-session">
           <div className="toolkit-timer">
-            <span>{tool.title}</span>
-            <strong>{secondsLeft}s</strong>
+            <span className="toolkit-timer__label">{tool.title}</span>
+            <span className="toolkit-timer__count">
+              <strong>{secondsLeft}</strong>
+              <em>sec</em>
+            </span>
           </div>
           <div className="toolkit-guidance">
             {guidance.map((line) => (

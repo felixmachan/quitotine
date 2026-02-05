@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import AppNav from "../components/AppNav";
 import { useLocalStorage } from "../app/useLocalStorage";
 import type { JournalEntry } from "../app/quitLogic";
-import { getDiaryReflections } from "../app/personalization";
 
 interface DiarySceneProps {
   activeRoute: string;
@@ -62,8 +61,6 @@ export default function DiaryScene({ activeRoute, onNavigate, entered = false }:
   }, [filtered]);
 
   const orderedDates = useMemo(() => Object.keys(grouped).sort((a, b) => (a < b ? 1 : -1)), [grouped]);
-  const reflections = useMemo(() => getDiaryReflections(journalEntries), [journalEntries]);
-
   useEffect(() => {
     document.body.dataset.themeMode = mode;
     return () => {
@@ -103,18 +100,6 @@ export default function DiaryScene({ activeRoute, onNavigate, entered = false }:
               onChange={(event) => setQuery(event.target.value)}
             />
           </label>
-          </div>
-
-          <div className="dashboard-card reflection-card">
-            <div className="card-header">
-              <h3>Reflection</h3>
-              <span className="card-subtitle">Non-invasive review</span>
-            </div>
-            <div className="reflection-lines">
-              {reflections.map((line, index) => (
-                <p key={`${line}-${index}`}>{line}</p>
-              ))}
-            </div>
           </div>
         </div>
 
