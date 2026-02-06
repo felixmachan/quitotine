@@ -7,7 +7,8 @@ const NAV_ITEMS = [
   { label: "Dashboard", route: "/dashboard" },
   { label: "Insights", route: "/insights" },
   { label: "Science", route: "/science" },
-  { label: "Diary", route: "/diary" }
+  { label: "Diary", route: "/diary" },
+  { label: "Profile", route: "/profile" }
 ];
 
 export default function AppNav({ active, onNavigate }: AppNavProps) {

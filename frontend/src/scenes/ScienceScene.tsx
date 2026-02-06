@@ -2,36 +2,34 @@ import { useEffect } from "react";
 import AppNav from "../components/AppNav";
 import { useLocalStorage } from "../app/useLocalStorage";
 
-const TOPICS = [
+const SCIENCE_TOPICS = [
   {
-    title: "Withdrawal",
-    summary:
-      "Withdrawal symptoms peak early and soften with steady routines, hydration, and predictable sleep. The first week is about calming the system.",
-    sources: ["doi:10.1037/adb0000461", "https://example.com/withdrawal"]
+    title: "Nicotine withdrawal timecourse",
+    abstract:
+      "Withdrawal symptoms peak early and taper as receptors downregulate. The intensity is real but typically short-lived compared to the overall quit timeline.",
+    practical: "Expect noise early; use short tools to ride it out.",
+    sources: ["DOI:10.1038/npp.2011.45", "PMID:21775927"]
   },
   {
-    title: "Cravings",
-    summary:
-      "Cravings are short-lived spikes, usually under 3 minutes. Surfing the urge retrains the brain by changing the response, not fighting the urge.",
-    sources: ["doi:10.1007/s00213-020-05667-7", "https://example.com/cravings"]
+    title: "Cue-reactivity and habit loops",
+    abstract:
+      "Conditioned cues can trigger cravings independent of nicotine levels. Repeated non-response weakens cue strength over time.",
+    practical: "Reduce exposure to high-cue contexts when spikes appear.",
+    sources: ["DOI:10.1037/1064-1297.10.1.1", "PMID:12372485"]
   },
   {
-    title: "Sleep",
-    summary:
-      "Sleep often improves after the first couple of weeks. Consistent bedtime rituals and reduced late-day nicotine help recovery.",
-    sources: ["doi:10.1016/j.smrv.2016.04.003", "https://example.com/sleep"]
+    title: "Stress and craving amplification",
+    abstract:
+      "Stress responses can amplify urge intensity by increasing arousal and attentional bias toward nicotine cues.",
+    practical: "Prioritize downshifts (breathing, movement) before making decisions.",
+    sources: ["DOI:10.1016/S0376-8716(99)00102-2", "PMID:10720947"]
   },
   {
-    title: "Dopamine & reward",
-    summary:
-      "Nicotine sensitizes reward circuits. Building alternative rewards and spacing cues reduces that sensitivity over time.",
-    sources: ["doi:10.1038/nrn.2016.170", "https://example.com/dopamine"]
-  },
-  {
-    title: "Habit loop",
-    summary:
-      "Cues, routines, and rewards can be rewritten. The fastest way is swapping routines while keeping the cue predictable.",
-    sources: ["doi:10.1037/adb0000646", "https://example.com/habit-loop"]
+    title: "Sleep disruption in early quit",
+    abstract:
+      "Sleep quality can dip during early cessation as autonomic systems rebalance. The effect tends to normalize with time and routine stability.",
+    practical: "Keep sleep cues consistent to reduce nighttime cravings.",
+    sources: ["DOI:10.5665/sleep.1710", "PMID:22215918"]
   }
 ];
 
@@ -62,7 +60,7 @@ export default function ScienceScene({ activeRoute, onNavigate, entered = false 
         <header className="dashboard-header">
           <div>
             <p className="dashboard-kicker">Quitotine science</p>
-            <h1>What is happening in the body</h1>
+            <h1>Evidence summaries</h1>
           </div>
           <div className="dashboard-actions">
             <AppNav active={activeRoute} onNavigate={onNavigate} />
@@ -75,19 +73,33 @@ export default function ScienceScene({ activeRoute, onNavigate, entered = false 
 
       <div className="dashboard-content">
         <div className="dashboard-grid">
-          {TOPICS.map((topic, index) => (
+          {SCIENCE_TOPICS.map((topic, index) => (
             <article
               key={topic.title}
-              className="dashboard-card page-card--reveal"
+              className="dashboard-card science-card"
               style={{ ["--card-index" as string]: index }}
             >
-              <h3>{topic.title}</h3>
-              <p>{topic.summary}</p>
-              <div className="page-sources">
-                {topic.sources.map((source) => (
-                  <span key={source}>{source}</span>
-                ))}
-              </div>
+              <details className="science-accordion">
+                <summary>{topic.title}</summary>
+                <div className="science-body">
+                  <div className="science-block">
+                    <span className="science-label">Abstract</span>
+                    <p>{topic.abstract}</p>
+                  </div>
+                  <div className="science-block">
+                    <span className="science-label">What this means practically</span>
+                    <p>{topic.practical}</p>
+                  </div>
+                  <div className="science-block">
+                    <span className="science-label">Sources</span>
+                    <div className="page-sources">
+                      {topic.sources.map((source) => (
+                        <span key={source}>{source}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </details>
             </article>
           ))}
         </div>

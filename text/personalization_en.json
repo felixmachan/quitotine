@@ -139,6 +139,127 @@
     ],
     "note": "No long-term thinking needed right now. Just the next step."
   },
+  "carrSteps": [
+    {
+      "id": "relief-trap",
+      "title": "Relief vs trap",
+      "illusion": "It helps me",
+      "reframe": "Nicotine only eases the discomfort it created.",
+      "microProof": "What did the urge promise to fix today?",
+      "action": "Write the promise in one line, then wait 90 seconds.",
+      "freedomStatement": "Relief is the end of a loop, not a reward.",
+      "unlockDay": 1
+    },
+    {
+      "id": "urges-pass",
+      "title": "Urges are short",
+      "illusion": "An urge means I need it",
+      "reframe": "Urges are short alarms. They fade even if you do nothing.",
+      "microProof": "How long did your last urge last?",
+      "action": "Set a 2-minute timer and watch the peak fade.",
+      "freedomStatement": "You do not have to obey a feeling.",
+      "unlockDay": 2,
+      "contexts": ["cravings"]
+    },
+    {
+      "id": "not-deprived",
+      "title": "You are not deprived",
+      "illusion": "Quitting is suffering",
+      "reframe": "Most suffering is the fear of losing something.",
+      "microProof": "What do you think you are missing right now?",
+      "action": "Name the loss, then name what you gain instead.",
+      "freedomStatement": "You are not losing a comfort. You are leaving a trap.",
+      "unlockDay": 3
+    },
+    {
+      "id": "trigger-rewrite",
+      "title": "Trigger rewriting",
+      "illusion": "Triggers control me",
+      "reframe": "Triggers are cues. You can rewrite the response.",
+      "microProof": "Which cue starts the loop most often?",
+      "action": "Change the cue once today: move rooms or shift the routine.",
+      "freedomStatement": "Cues are not commands. They are invitations.",
+      "unlockDay": 7,
+      "contexts": ["triggers"]
+    },
+    {
+      "id": "identity-shift",
+      "title": "Identity shift",
+      "illusion": "I am a user trying to stop",
+      "reframe": "You are a non-user learning a new baseline.",
+      "microProof": "What does a non-user do at your hardest time?",
+      "action": "Write one line that starts with: I am someone who...",
+      "freedomStatement": "Freedom is an identity, not a decision.",
+      "unlockDay": 14
+    }
+  ],
+  "carrLenses": [
+    {
+      "line": "Nicotine promises relief from a discomfort it created.",
+      "question": "What did the urge promise it would fix?",
+      "tags": ["cravings"]
+    },
+    {
+      "line": "The fear of losing it hurts more than the urge itself.",
+      "question": "What are you afraid you will miss today?",
+      "tags": ["fear"]
+    },
+    {
+      "line": "Urges are short loops, not needs.",
+      "question": "If you waited two minutes, what would change?",
+      "tags": ["cravings"]
+    },
+    {
+      "line": "You are not deprived. You are stepping out of a trap.",
+      "question": "What are you gaining by not using?",
+      "tags": ["identity"]
+    },
+    {
+      "line": "Triggers are cues. You can rewrite the response.",
+      "question": "Which cue is loudest today?",
+      "tags": ["triggers"]
+    }
+  ],
+  "spikeReframes": {
+    "It will calm me": "The calm is just the end of withdrawal. It passes whether you feed it or not.",
+    "I will focus": "Focus returns when the loop quiets. A two-minute delay proves it.",
+    "I need it": "You feel the loop, not a need. It fades on its own."
+  },
+  "freedomStates": {
+    "calibrating": {
+      "label": "Calibrating",
+      "line": "Log a few days and your freedom signal will sharpen."
+    },
+    "building": {
+      "label": "Building",
+      "line": "Cravings are loosening their grip. Keep routines steady."
+    },
+    "stabilizing": {
+      "label": "Stabilizing",
+      "line": "Your baseline is steadier this week."
+    },
+    "volatile": {
+      "label": "Volatile",
+      "line": "Signals are choppy. Protect the basics and lower demands."
+    }
+  },
+  "unlocks": [
+    {
+      "day": 3,
+      "label": "Name the lie",
+      "detail": "Spot the illusion in the moment."
+    },
+    {
+      "day": 7,
+      "label": "Trigger rewrite",
+      "detail": "Swap the cue before the loop starts."
+    },
+    {
+      "day": 14,
+      "label": "Identity reinforcement",
+      "detail": "Anchor the non-user identity."
+    }
+  ],
   "insights": {
     "empty": "Log a few days to unlock interpretation.",
     "cravingsEase": "Cravings have softened compared with last week.",

@@ -16,6 +16,7 @@ import DashboardScene from "../scenes/DashboardScene";
 import InsightsScene from "../scenes/InsightsScene";
 import ScienceScene from "../scenes/ScienceScene";
 import DiaryScene from "../scenes/DiaryScene";
+import ProfileScene from "../scenes/ProfileScene";
 import ProgressRail from "../components/ProgressRail";
 import { useLocalStorage } from "./useLocalStorage";
 import { OnboardingData } from "./types";
@@ -218,6 +219,18 @@ export default function App() {
           <div className="vignette app-vignette" />
         </div>
         <DiaryScene activeRoute={route} onNavigate={navigate} entered={dashboardEntered} />
+      </div>
+    );
+  }
+
+  if (route === "/profile") {
+    return (
+      <div className="relative min-h-screen text-mist" data-theme-stage={stage}>
+        <div className="app-background" aria-hidden="true">
+          <div className="noise-layer" />
+          <div className="vignette app-vignette" />
+        </div>
+        <ProfileScene activeRoute={route} onNavigate={navigate} entered={dashboardEntered} />
       </div>
     );
   }

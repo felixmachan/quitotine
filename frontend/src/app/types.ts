@@ -11,3 +11,16 @@ export interface OnboardingData {
   dailyUnit: string;
   goalType: GoalType | "";
 }
+
+export interface ProfileData {
+  displayName: string;
+  email: string;
+  username: string;
+  reasons: string;
+  building: string;
+  identityStatement: string;
+  triggers: string[];
+  tone: "soft" | "direct";
+  scienceDepth: "light" | "deeper";
+  spikeIntensity: "minimal" | "guided";
+}
