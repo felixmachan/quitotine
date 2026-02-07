@@ -41,6 +41,12 @@ type AuthResponse = {
   refresh_token: string;
 };
 
+type ApiErrorBody = {
+  detail?: string | { msg?: string } | Array<{ msg?: string }>;
+  error?: string;
+  message?: string;
+};
+
 export default function App() {
   const [data, setData] = useLocalStorage<OnboardingData>("quitotine:onboarding", initialData);
   const [authTokens, setAuthTokens] = useLocalStorage<AuthTokens | null>("quitotine:authTokens", null);
@@ -194,12 +200,24 @@ export default function App() {
   const parseError = async (response: Response) => {
     let detail = "";
     try {
-      detail = (await response.text()).trim();
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        const payload = (await response.json()) as ApiErrorBody;
+        if (typeof payload?.detail === "string") detail = payload.detail;
+        else if (payload?.detail && !Array.isArray(payload.detail) && typeof payload.detail.msg === "string") {
+          detail = payload.detail.msg;
+        } else if (Array.isArray(payload?.detail)) {
+          const first = payload.detail.find((item) => typeof item?.msg === "string");
+          detail = first?.msg ?? "";
+        } else if (typeof payload?.error === "string") detail = payload.error;
+        else if (typeof payload?.message === "string") detail = payload.message;
+      } else {
+        detail = (await response.text()).trim();
+      }
     } catch {
       detail = "";
     }
-    const suffix = detail ? `: ${detail}` : ` (HTTP ${response.status})`;
-    return suffix;
+    return detail.replace(/\s+/g, " ").trim();
   };
 
   const fetchMe = async (accessToken: string) => {
@@ -237,8 +255,33 @@ export default function App() {
     }
 
     if (!response.ok) {
-      const prefix = endpoint === "/auth/login" ? "Login failed" : "Registration failed";
-      throw new Error(`${prefix}${await parseError(response)}.`);
+      const detail = await parseError(response);
+      if (endpoint === "/auth/login") {
+        if (response.status === 401) {
+          throw new Error("Wrong email/password combination.");
+        }
+        if (response.status === 404) {
+          throw new Error("No account found for this email.");
+        }
+        if (response.status === 429) {
+          throw new Error("Too many login attempts. Please try again in a minute.");
+        }
+        if (response.status >= 500) {
+          throw new Error("Login service is temporarily unavailable. Please try again.");
+        }
+        throw new Error(detail ? `Login failed: ${detail}.` : `Login failed (HTTP ${response.status}).`);
+      }
+
+      if (response.status === 400 && /already registered/i.test(detail)) {
+        throw new Error("This email is already registered.");
+      }
+      if (response.status === 422) {
+        throw new Error(detail || "Please check your email and password format.");
+      }
+      if (response.status >= 500) {
+        throw new Error("Registration service is temporarily unavailable. Please try again.");
+      }
+      throw new Error(detail ? `Registration failed: ${detail}.` : `Registration failed (HTTP ${response.status}).`);
     }
 
     const tokensRaw = (await response.json()) as AuthResponse;

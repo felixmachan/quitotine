@@ -2588,6 +2588,16 @@ body[data-theme-mode="light"] .app-background {
   flex-wrap: wrap;
 }
 
+.state-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.state-overview strong {
+  display: block;
+}
+
 .state-label {
   font-size: 0.75rem;
   letter-spacing: 0.1em;
@@ -2755,20 +2765,124 @@ body[data-theme-mode="light"] .app-background {
 
 .chart-shell {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
+  padding: 5px;
 }
 
 .chart-line {
   width: 100%;
-  height: 120px;
-  stroke: rgba(120, 240, 220, 0.9);
-  stroke-width: 2;
-  fill: none;
+  height: 340px;
 }
 
-.chart-line polyline {
+.chart-line--full {
+  overflow: visible;
+}
+
+.chart-grid {
+  stroke: rgba(190, 230, 228, 0.22);
+  stroke-width: 1;
+}
+
+.chart-tick {
+  fill: rgba(210, 240, 240, 0.72);
+  font-size: 10px;
+}
+
+.chart-axis-title {
+  fill: rgba(220, 248, 248, 0.78);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-area {
+  fill: rgba(120, 240, 220, 0.18);
+}
+
+.chart-area--mood {
+  fill: rgba(141, 231, 246, 0.16);
+}
+
+.chart-area--animate {
+  opacity: 0;
+  animation: chartAreaFade 0.8s ease 0.18s forwards;
+}
+
+.chart-polyline {
+  stroke: rgba(120, 240, 220, 0.92);
+  stroke-width: 2.6;
+  fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.chart-polyline--mood {
+  stroke: rgba(96, 214, 240, 0.95);
+}
+
+.chart-polyline--animate {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chartLineDraw 1s ease-out 0.05s forwards;
+}
+
+.chart-point {
+  fill: rgba(120, 240, 220, 1);
+  stroke: rgba(9, 24, 30, 0.45);
+  stroke-width: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chartPointIn 0.28s ease forwards;
+}
+
+.chart-point--mood {
+  fill: rgba(96, 214, 240, 0.98);
+}
+
+.chart-guide-line {
+  stroke: rgba(200, 240, 236, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart-tooltip-box {
+  fill: rgba(9, 24, 30, 0.92);
+  stroke: rgba(120, 240, 220, 0.35);
+  stroke-width: 1;
+}
+
+.chart-tooltip-text {
+  fill: rgba(236, 255, 252, 0.92);
+  font-size: 10px;
+}
+
+.chart-tooltip-text--strong {
+  font-weight: 700;
+}
+
+@keyframes chartLineDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chartAreaFade {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes chartPointIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .chart-axis {
@@ -2933,8 +3047,54 @@ body[data-theme-mode="light"] .app-background {
   color: rgba(12, 24, 30, 0.85);
 }
 
-.dashboard-shell[data-theme-mode="light"] .chart-line {
-  stroke: rgba(70, 200, 190, 0.9);
+.dashboard-shell[data-theme-mode="light"] .chart-grid {
+  stroke: rgba(8, 40, 48, 0.14);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-tick {
+  fill: rgba(12, 24, 30, 0.62);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-axis-title {
+  fill: rgba(12, 24, 30, 0.8);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-area {
+  fill: rgba(70, 200, 190, 0.16);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-area--mood {
+  fill: rgba(80, 192, 226, 0.14);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-polyline {
+  stroke: rgba(70, 200, 190, 0.95);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-polyline--mood {
+  stroke: rgba(56, 170, 206, 0.92);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-point {
+  fill: rgba(70, 200, 190, 0.98);
+  stroke: rgba(12, 24, 30, 0.22);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-point--mood {
+  fill: rgba(56, 170, 206, 0.95);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-guide-line {
+  stroke: rgba(12, 24, 30, 0.2);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-tooltip-box {
+  fill: rgba(250, 255, 255, 0.96);
+  stroke: rgba(8, 40, 48, 0.22);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-tooltip-text {
+  fill: rgba(12, 24, 30, 0.9);
 }
 
 .dashboard-shell[data-theme-mode="light"] .time-bar::after {
@@ -2949,4 +3109,212 @@ body[data-theme-mode="light"] .app-background {
   .state-card {
     grid-column: span 1;
   }
+}
+
+.dashboard-grid--spike {
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  align-items: start;
+}
+
+.state-card--half,
+.journal-inline-card {
+  grid-column: span 1;
+}
+
+.action-card,
+.progress-card {
+  align-self: start;
+}
+
+.progress-rail {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(120, 240, 220, 0.18);
+  background: rgba(10, 24, 32, 0.5);
+  overflow: hidden;
+}
+
+.progress-rail span {
+  display: block;
+  height: 100%;
+  width: calc(var(--progress, 0) * 100%);
+  background: linear-gradient(90deg, rgba(120, 240, 220, 0.75), rgba(141, 231, 246, 0.95));
+}
+
+.progress-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  font-size: 0.85rem;
+  color: rgba(220, 248, 248, 0.68);
+}
+
+.science-layer-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.science-applied {
+  display: grid;
+  gap: var(--panel-gap);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.science-applied-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.science-applied-copy p {
+  margin: 0;
+}
+
+.science-link {
+  width: fit-content;
+}
+
+.science-library {
+  display: grid;
+  gap: var(--panel-gap);
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.science-categories {
+  position: sticky;
+  top: 16px;
+  gap: 14px;
+}
+
+.science-category-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ghost-button--active {
+  border-color: rgba(120, 240, 220, 0.45);
+  background: rgba(120, 240, 220, 0.18);
+}
+
+.science-article-list {
+  display: grid;
+  gap: 8px;
+}
+
+.science-article-chip {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(120, 240, 220, 0.14);
+  background: rgba(10, 24, 32, 0.45);
+  color: inherit;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.science-article-chip em {
+  font-style: normal;
+  font-size: 0.8rem;
+  color: rgba(220, 248, 248, 0.6);
+}
+
+.science-article-chip--active {
+  border-color: rgba(120, 240, 220, 0.5);
+  background: rgba(120, 240, 220, 0.14);
+}
+
+.science-reading {
+  gap: 18px;
+}
+
+.science-reading__header {
+  display: grid;
+  gap: 10px;
+}
+
+.science-reading__header h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 1.7vw, 1.55rem);
+}
+
+.science-reading__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 0.84rem;
+  color: rgba(220, 248, 248, 0.7);
+}
+
+.science-reading__meta a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(120, 240, 220, 0.4);
+}
+
+.science-reading__section {
+  display: grid;
+  gap: 8px;
+}
+
+.science-reading__section p {
+  margin: 0;
+}
+
+.science-reading__body {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-shell[data-theme-mode="light"] .progress-rail,
+.dashboard-shell[data-theme-mode="light"] .science-article-chip {
+  background: rgba(250, 255, 255, 0.9);
+  border-color: rgba(8, 40, 48, 0.14);
+  color: rgba(12, 24, 30, 0.85);
+}
+
+.dashboard-shell[data-theme-mode="light"] .science-reading__meta,
+.dashboard-shell[data-theme-mode="light"] .progress-meta {
+  color: rgba(12, 24, 30, 0.7);
+}
+
+.dashboard-shell[data-theme-mode="light"] .science-reading__meta a {
+  border-bottom-color: rgba(8, 40, 48, 0.35);
+}
+
+@media (max-width: 960px) {
+  .science-library {
+    grid-template-columns: 1fr;
+  }
+
+  .science-categories {
+    position: static;
+  }
+}
+
+@media (min-width: 961px) {
+  .dashboard-grid:not(.dashboard-grid--spike) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .dashboard-grid--spike {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid:not(.dashboard-grid--spike) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-grid--spike .spike-card {
+  grid-column: auto;
+}
+
+.spike-tools-slot {
+  align-self: start;
 }

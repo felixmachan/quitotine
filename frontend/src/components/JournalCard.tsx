@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { JournalEntry, toIsoDate } from "../app/quitLogic";
 
 interface JournalCardProps {
   entries: JournalEntry[];
   onSave: (entry: JournalEntry) => void;
+  className?: string;
+  style?: CSSProperties;
 }
 
-export default function JournalCard({ entries, onSave }: JournalCardProps) {
+export default function JournalCard({ entries, onSave, className = "", style }: JournalCardProps) {
   const today = toIsoDate(new Date());
   const existing = useMemo(() => entries.find((entry) => entry.date === today), [entries, today]);
 
@@ -22,7 +24,7 @@ export default function JournalCard({ entries, onSave }: JournalCardProps) {
   };
 
   return (
-    <div className="dashboard-card journal-card">
+    <div className={`dashboard-card journal-card ${className}`.trim()} style={style}>
       <div className="card-header">
         <h3>Journal</h3>
         <span className="card-subtitle">Small check-in, big signal</span>

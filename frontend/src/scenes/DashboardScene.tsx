@@ -10,11 +10,7 @@ import {
   type QuitPlan,
   type RelapseEvent
 } from "../app/quitLogic";
-import {
-  getAdaptiveSignal,
-  getSpikeReframe,
-  getMilestones
-} from "../app/personalization";
+import { getAdaptiveSignal, getMilestones, getSpikeReframe } from "../app/personalization";
 import AppNav from "../components/AppNav";
 import CravingToolkit from "../components/CravingToolkit";
 import JournalCard from "../components/JournalCard";
@@ -30,6 +26,7 @@ interface DashboardSceneProps {
 type ThemeMode = "dark" | "light";
 
 const RELAPSE_TAGS = ["stress", "social", "boredom", "fatigue", "trigger"] as const;
+
 interface FutureMessage {
   day: number;
   message: string;
@@ -50,14 +47,11 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
   const [relapseNote, setRelapseNote] = useState("");
   const [relapsePulse, setRelapsePulse] = useState(false);
   const [spikeMode, setSpikeMode] = useLocalStorage<boolean>("quitotine:spike", false);
-  const [spikeDismissedDate, setSpikeDismissedDate] = useLocalStorage<string | null>(
-    "quitotine:spikeDismissed",
-    null
-  );
+  const [spikeDismissedDate, setSpikeDismissedDate] = useLocalStorage<string | null>("quitotine:spikeDismissed", null);
   const [spikeLie, setSpikeLie] = useState<string | null>(null);
 
-  const toolkitRef = useRef<HTMLDetailsElement | null>(null);
-  const journalRef = useRef<HTMLDetailsElement | null>(null);
+  const spikeToolkitRef = useRef<HTMLDivElement | null>(null);
+  const journalPanelRef = useRef<HTMLDivElement | null>(null);
 
   const dailyUnits = Number.isFinite(data.dailyAmount) ? Math.max(0, Number(data.dailyAmount)) : 0;
   const useDays = useMemo(() => {
@@ -146,10 +140,7 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
   }, [activePlan.durationDays, dayIndex]);
 
   const signal = useMemo(() => getAdaptiveSignal(journalEntries), [journalEntries]);
-  const sortedEntries = useMemo(
-    () => [...journalEntries].sort((a, b) => (a.date < b.date ? 1 : -1)),
-    [journalEntries]
-  );
+  const sortedEntries = useMemo(() => [...journalEntries].sort((a, b) => (a.date < b.date ? 1 : -1)), [journalEntries]);
 
   const average = (values: number[]) => {
     if (!values.length) return 0;
@@ -157,9 +148,7 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
   };
 
   const computeTrend = (values: number[]) => {
-    if (values.length < 3) {
-      return { direction: "flat", label: "steady" };
-    }
+    if (values.length < 3) return { direction: "flat", label: "steady" };
     const recent = values.slice(0, 3);
     const prior = values.slice(3, 6);
     const recentAvg = average(recent);
@@ -169,14 +158,8 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
     return delta > 0 ? { direction: "up", label: "rising" } : { direction: "down", label: "easing" };
   };
 
-  const cravingsTrend = useMemo(
-    () => computeTrend(sortedEntries.map((entry) => entry.cravings)),
-    [sortedEntries]
-  );
-  const moodTrend = useMemo(
-    () => computeTrend(sortedEntries.map((entry) => entry.mood)),
-    [sortedEntries]
-  );
+  const cravingsTrend = useMemo(() => computeTrend(sortedEntries.map((entry) => entry.cravings)), [sortedEntries]);
+  const moodTrend = useMemo(() => computeTrend(sortedEntries.map((entry) => entry.mood)), [sortedEntries]);
 
   const stateOverview = useMemo(() => {
     if (!sortedEntries.length) {
@@ -200,20 +183,6 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
     return sentences.slice(0, 2).join(" ");
   }, [signal]);
 
-  const lastEntryLabel = useMemo(() => {
-    if (!sortedEntries.length) return "No check-ins yet";
-    const latest = sortedEntries[0];
-    const date = new Date(`${latest.date}T00:00:00`);
-    return `Last check-in ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
-  }, [sortedEntries]);
-
-  const trendGlyph = (direction: string) => {
-    if (direction === "up") return "↑";
-    if (direction === "down") return "↓";
-    return "→";
-  };
-
-
   return (
     <div
       className={`dashboard-shell ${entered ? "dashboard-shell--enter" : ""} ${relapsePulse ? "dashboard-shell--dip" : ""}`}
@@ -233,14 +202,16 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
             <h1>{spikeMode ? "Spike mode" : `Day ${planDayLabel}`}</h1>
           </div>
           <div className="dashboard-actions">
-            <AppNav active={activeRoute} onNavigate={onNavigate} />
-            <button
-              type="button"
-              className="ghost-button scene-theme-toggle"
-              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
-            >
-              {mode === "dark" ? "Light mode" : "Dark mode"}
-            </button>
+            {spikeMode ? null : <AppNav active={activeRoute} onNavigate={onNavigate} />}
+            {spikeMode ? null : (
+              <button
+                type="button"
+                className="ghost-button scene-theme-toggle"
+                onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+              >
+                {mode === "dark" ? "Light mode" : "Dark mode"}
+              </button>
+            )}
           </div>
         </header>
 
@@ -249,7 +220,9 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
             <div className="timeline-header">
               <div>
                 <p className="timeline-kicker">Your quit journey</p>
-                <h2>Day {dayIndex} of {activePlan.durationDays}</h2>
+                <h2>
+                  Day {dayIndex} of {activePlan.durationDays}
+                </h2>
               </div>
               <div className="timeline-meta">
                 <span>{Math.round(progress * 100)}% complete</span>
@@ -270,11 +243,7 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
                       <span className="timeline-tooltip__day">Day {milestone.day}</span>
                       <strong>{milestone.title}</strong>
                       <em>{milestone.description}</em>
-                      <button
-                        type="button"
-                        className="timeline-tooltip__link"
-                        onClick={() => onNavigate("/science")}
-                      >
+                      <button type="button" className="timeline-tooltip__link" onClick={() => onNavigate("/science")}>
                         Open science
                       </button>
                     </span>
@@ -287,84 +256,89 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
       </div>
 
       <div className="dashboard-content">
-        <div className="dashboard-grid">
+        <div className={`dashboard-grid ${spikeMode ? "dashboard-grid--spike" : ""}`}>
           {spikeMode ? (
-            <div className="dashboard-card spike-card" style={{ ["--card-index" as string]: 0 }}>
-              <div className="card-header">
-                <h3>{personalization.spikeMode.title}</h3>
-                <span className="card-subtitle">{personalization.spikeMode.subtitle}</span>
-              </div>
-              <p className="spike-reframe">This urge is a loop firing, not a need.</p>
-              <div className="spike-lie">
-                <span className="spike-label">Name the lie (15 seconds)</span>
-                {dayIndex >= 3 ? (
-                  <>
-                    <div className="spike-choices">
-                      {["It will calm me", "I will focus", "I need it"].map((choice) => (
-                        <button
-                          key={choice}
-                          type="button"
-                          className={`tag-button ${spikeLie === choice ? "tag-button--active" : ""}`}
-                          onClick={() => setSpikeLie(choice)}
-                        >
-                          {choice}
-                        </button>
-                      ))}
-                    </div>
-                    {spikeLie ? <p className="spike-response">{getSpikeReframe(spikeLie)}</p> : null}
-                  </>
-                ) : (
-                  <p className="spike-response">Unlocks on day 3. For now, name the urge and wait 90 seconds.</p>
-                )}
-              </div>
-              {futureMessage?.message && dayIndex >= futureMessage.day ? (
-                <div className="spike-future">
-                  <span className="spike-label">Future you</span>
-                  <p>{futureMessage.message}</p>
+            <>
+              <section className="dashboard-card spike-card" style={{ ["--card-index" as string]: 0 }}>
+                <div className="card-header">
+                  <h3>{personalization.spikeMode.title}</h3>
+                  <span className="card-subtitle">{personalization.spikeMode.subtitle}</span>
                 </div>
-              ) : null}
-              <ul className="spike-steps">
-                {personalization.spikeMode.steps.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ul>
-              <p className="spike-note">{personalization.spikeMode.note}</p>
-              <div className="hero-actions">
-                <button
-                  type="button"
-                  className="primary-button"
+                <p className="spike-reframe">This urge is a loop firing, not a need.</p>
+                <div className="spike-lie">
+                  <span className="spike-label">Name the lie (15 seconds)</span>
+                  {dayIndex >= 3 ? (
+                    <>
+                      <div className="spike-choices">
+                        {["It will calm me", "I will focus", "I need it"].map((choice) => (
+                          <button
+                            key={choice}
+                            type="button"
+                            className={`tag-button ${spikeLie === choice ? "tag-button--active" : ""}`}
+                            onClick={() => setSpikeLie(choice)}
+                          >
+                            {choice}
+                          </button>
+                        ))}
+                      </div>
+                      {spikeLie ? <p className="spike-response">{getSpikeReframe(spikeLie)}</p> : null}
+                    </>
+                  ) : (
+                    <p className="spike-response">Unlocks on day 3. For now, name the urge and wait 90 seconds.</p>
+                  )}
+                </div>
+                {futureMessage?.message && dayIndex >= futureMessage.day ? (
+                  <div className="spike-future">
+                    <span className="spike-label">Future you</span>
+                    <p>{futureMessage.message}</p>
+                  </div>
+                ) : null}
+                <ul className="spike-steps">
+                  {personalization.spikeMode.steps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
+                <p className="spike-note">{personalization.spikeMode.note}</p>
+                <div className="hero-actions">
+                  <button
+                    type="button"
+                    className="primary-button"
                   onClick={() => {
-                    if (toolkitRef.current) {
-                      toolkitRef.current.open = true;
-                      toolkitRef.current.scrollIntoView({ behavior: "smooth" });
+                    if (spikeToolkitRef.current) {
+                      spikeToolkitRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
                     }
                   }}
                 >
                   Start a tool
-                </button>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => {
-                    const today = toIsoDate(new Date());
-                    setSpikeMode(false);
-                    setSpikeDismissedDate(today);
-                    setSpikeLie(null);
-                  }}
-                >
-                  Exit spike mode
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => {
+                      const isoToday = toIsoDate(new Date());
+                      setSpikeMode(false);
+                      setSpikeDismissedDate(isoToday);
+                      setSpikeLie(null);
+                    }}
+                  >
+                    Exit spike mode
+                  </button>
+                </div>
+              </section>
+
+              <div ref={spikeToolkitRef} className="spike-tools-slot">
+                <CravingToolkit />
               </div>
-            </div>
+            </>
           ) : (
             <>
-              <div className="dashboard-card state-card" style={{ ["--card-index" as string]: 0 }}>
+              <section className="dashboard-card state-card state-card--half" style={{ ["--card-index" as string]: 0 }}>
                 <div className="card-header">
-                  <h3>State overview</h3>
-                  <span className="card-subtitle">Directional, not analytical</span>
+                  <h3>Today's signal</h3>
+                  <span className="card-subtitle">State, not analysis</span>
                 </div>
                 <div className="state-header">
-                  <div>
+                  <div className="state-overview">
                     <span className="state-label">Overall state</span>
                     <strong>{stateOverview.label}</strong>
                     <p className="state-hint">{stateOverview.hint}</p>
@@ -373,100 +347,39 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
                 <div className="state-indicators">
                   <div className="state-indicator">
                     <span className="indicator-label">Craving trend</span>
-                    <span className={`indicator-value indicator-${cravingsTrend.direction}`}>
-                      {trendGlyph(cravingsTrend.direction)} {cravingsTrend.label}
-                    </span>
+                    <span className={`indicator-value indicator-${cravingsTrend.direction}`}>{cravingsTrend.label}</span>
                   </div>
                   <div className="state-indicator">
                     <span className="indicator-label">Mood trend</span>
-                    <span className={`indicator-value indicator-${moodTrend.direction}`}>
-                      {trendGlyph(moodTrend.direction)} {moodTrend.label}
-                    </span>
+                    <span className={`indicator-value indicator-${moodTrend.direction}`}>{moodTrend.label}</span>
                   </div>
                   <div className="state-indicator">
                     <span className="indicator-label">Nervous system</span>
                     <span className="indicator-value">{stateOverview.nervous}</span>
                   </div>
                 </div>
-                <div className="state-actions">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => {
-                      if (journalRef.current) {
-                        journalRef.current.open = true;
-                        journalRef.current.scrollIntoView({ behavior: "smooth" });
-                      }
-                    }}
-                  >
-                    Log check-in
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => {
-                      if (toolkitRef.current) {
-                        toolkitRef.current.open = true;
-                        toolkitRef.current.scrollIntoView({ behavior: "smooth" });
-                      }
-                    }}
-                  >
-                    Open tools
-                  </button>
-                </div>
-              </div>
-
-              <div className="dashboard-card signal-card" style={{ ["--card-index" as string]: 1 }}>
-                <div className="card-header">
-                  <h3>Today's signal</h3>
-                  <span className="card-subtitle">Short, actionable</span>
-                </div>
                 <p className="signal-line">{signalSummary || "Log a check-in to generate today's signal."}</p>
                 {signal.source ? <span className="signal-source">{signal.source}</span> : null}
-                <div className="signal-actions">
-                  <button type="button" className="ghost-button" onClick={() => setSpikeMode(true)}>
-                    Start spike mode
+                <div className="state-actions">
+                  <button type="button" className="primary-button" onClick={() => setSpikeMode(true)}>
+                    Enter spike mode
                   </button>
                 </div>
-              </div>
+              </section>
 
-              <div className="dashboard-card checkin-card" style={{ ["--card-index" as string]: 2 }}>
-                <div className="card-header">
-                  <h3>Check-in status</h3>
-                  <span className="card-subtitle">{lastEntryLabel}</span>
-                </div>
-                <p className="checkin-line">Keep the data clean to sharpen your trends.</p>
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() => {
-                    if (journalRef.current) {
-                      journalRef.current.open = true;
-                      journalRef.current.scrollIntoView({ behavior: "smooth" });
-                    }
-                  }}
-                >
-                  Open journal
-                </button>
+              <div ref={journalPanelRef}>
+                <JournalCard
+                  entries={journalEntries}
+                  onSave={handleJournalSave}
+                  className="journal-inline-card"
+                  style={{ ["--card-index" as string]: 1 }}
+                />
               </div>
             </>
           )}
 
-          <section className="dashboard-secondary" style={{ ["--card-index" as string]: spikeMode ? 1 : 3 }}>
-            <details ref={toolkitRef} className="dashboard-disclosure">
-              <summary>Tools (quiet mode)</summary>
-              <div className="dashboard-disclosure__body">
-                <CravingToolkit />
-              </div>
-            </details>
-            {spikeMode ? null : (
-              <details ref={journalRef} className="dashboard-disclosure">
-                <summary>Journal (check-in)</summary>
-                <div className="dashboard-disclosure__body">
-                  <JournalCard entries={journalEntries} onSave={handleJournalSave} />
-                </div>
-              </details>
-            )}
+          {spikeMode ? null : (
+          <section className="dashboard-secondary" style={{ ["--card-index" as string]: 3 }}>
             {spikeMode ? null : (
               <details className="dashboard-disclosure">
                 <summary>Relapse log</summary>
@@ -519,6 +432,7 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
               </details>
             )}
           </section>
+          )}
         </div>
       </div>
     </div>
