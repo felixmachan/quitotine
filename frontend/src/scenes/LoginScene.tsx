@@ -32,7 +32,7 @@ export default function LoginScene({
         Back
       </button>
       <form className="w-full max-w-xl rounded-[28px] border border-white/10 bg-white/5 p-8" onSubmit={handleSubmit}>
-        <p className="text-xs uppercase tracking-[0.3em] text-white/40">Auth</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-white/40">Access your quitting dashboard</p>
         <h1 className="mt-4 text-4xl font-semibold text-white">Log in</h1>
         <div className="mt-8 grid gap-5">
           <input

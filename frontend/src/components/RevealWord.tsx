@@ -7,7 +7,7 @@ interface RevealWordProps {
 }
 
 const SCRAMBLE_CHARS = ">#&]$ßäđŋøü?+@*%<>[]{}0123456789";
-const SCRAMBLE_LENGTH = 6;
+const SCRAMBLE_LENGTH = 7;
 
 const scramble = (length: number) => {
   let out = "";
