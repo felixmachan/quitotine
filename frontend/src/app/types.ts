@@ -15,7 +15,6 @@ export interface OnboardingData {
 export interface ProfileData {
   displayName: string;
   email: string;
-  username: string;
   reasons: string;
   building: string;
   identityStatement: string;

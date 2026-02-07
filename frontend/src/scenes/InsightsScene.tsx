@@ -38,7 +38,6 @@ interface FutureMessage {
 const DEFAULT_PROFILE: ProfileData = {
   displayName: "",
   email: "",
-  username: "",
   reasons: "",
   building: "",
   identityStatement: "I am someone who lives without nicotine.",
@@ -51,7 +50,11 @@ const DEFAULT_PROFILE: ProfileData = {
 export default function InsightsScene({ data, activeRoute, onNavigate, entered = false }: InsightsSceneProps) {
   const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
   const [journalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
-  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", "dark");
+  const initialMode: ThemeMode =
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", initialMode);
   const [profile] = useLocalStorage<ProfileData>("quitotine:profile", DEFAULT_PROFILE);
   const [carrInsights, setCarrInsights] = useLocalStorage<CarrInsight[]>("quitotine:carrInsights", []);
   const [futureMessage, setFutureMessage] = useLocalStorage<FutureMessage | null>("quitotine:futureMessage", null);
@@ -215,7 +218,11 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
           </div>
           <div className="dashboard-actions">
             <AppNav active={activeRoute} onNavigate={onNavigate} />
-            <button type="button" className="ghost-button" onClick={() => setMode(mode === "dark" ? "light" : "dark")}>
+            <button
+              type="button"
+              className="ghost-button scene-theme-toggle"
+              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+            >
               {mode === "dark" ? "Light mode" : "Dark mode"}
             </button>
           </div>

@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { AuthUser, ProfileData } from "../app/types";
 import { useLocalStorage } from "../app/useLocalStorage";
@@ -9,6 +10,7 @@ interface ProfileSceneProps {
   authUser: AuthUser | null;
   onLogout: () => Promise<void>;
   onAccountSave: (displayName: string) => Promise<void>;
+  onPasswordChange: (password: string) => Promise<void>;
   entered?: boolean;
 }
 
@@ -17,7 +19,6 @@ type ThemeMode = "dark" | "light";
 const initialProfile: ProfileData = {
   displayName: "",
   email: "",
-  username: "",
   reasons: "",
   building: "",
   identityStatement: "I am someone who lives without nicotine.",
@@ -61,9 +62,14 @@ export default function ProfileScene({
   authUser,
   onLogout,
   onAccountSave,
+  onPasswordChange,
   entered = false
 }: ProfileSceneProps) {
-  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", "dark");
+  const initialMode: ThemeMode =
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", initialMode);
   const [profile, setProfile] = useLocalStorage<ProfileData>("quitotine:profile", initialProfile);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
@@ -71,7 +77,24 @@ export default function ProfileScene({
   const [accountPending, setAccountPending] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordPending, setPasswordPending] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState({ next: "", confirm: "" });
+  const hasMin = passwordDraft.next.length >= 8;
+  const hasUpper = /[A-Z]/.test(passwordDraft.next);
+  const hasLower = /[a-z]/.test(passwordDraft.next);
+  const hasNumber = /\d/.test(passwordDraft.next);
+  const hasSymbol = /[^A-Za-z0-9]/.test(passwordDraft.next);
+  const passwordRules = [
+    { id: "min", label: "At least 8 characters", ok: hasMin },
+    { id: "upper", label: "One uppercase letter", ok: hasUpper },
+    { id: "lower", label: "One lowercase letter", ok: hasLower },
+    { id: "number", label: "One number", ok: hasNumber },
+    { id: "symbol", label: "One symbol", ok: hasSymbol }
+  ];
+  const isPasswordValid = passwordRules.every((rule) => rule.ok);
+  const passwordsMismatch = passwordDraft.confirm.length > 0 && passwordDraft.next !== passwordDraft.confirm;
 
   const signedInEmail = useMemo(() => authUser?.email || profile.email || "-", [authUser?.email, profile.email]);
   const signedInId = useMemo(() => authUser?.id || "-", [authUser?.id]);
@@ -120,19 +143,42 @@ export default function ProfileScene({
     }
   };
 
-  const handlePasswordSave = () => {
-    if (!passwordDraft.next || passwordDraft.next !== passwordDraft.confirm) {
+  const handlePasswordSave = async () => {
+    if (!isPasswordValid || !passwordDraft.next || passwordDraft.next !== passwordDraft.confirm) {
       return;
     }
+    try {
+      setPasswordPending(true);
+      setPasswordError("");
+      await onPasswordChange(passwordDraft.next);
+      setPasswordDraft({ next: "", confirm: "" });
+      setPasswordSaved(true);
+      setIsChangingPassword(false);
+      window.setTimeout(() => setPasswordSaved(false), 5000);
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : "Failed to change password.");
+    } finally {
+      setPasswordPending(false);
+    }
+  };
+
+  const handlePasswordCancel = () => {
     setPasswordDraft({ next: "", confirm: "" });
-    setPasswordSaved(true);
+    setPasswordError("");
+    setPasswordFocused(false);
     setIsChangingPassword(false);
-    window.setTimeout(() => setPasswordSaved(false), 5000);
   };
 
   return (
     <div className={`dashboard-shell ${entered ? "dashboard-shell--enter" : ""}`} data-theme-mode={mode}>
       <div className="dashboard-backdrop" aria-hidden="true" />
+      <button
+        type="button"
+        className="ghost-button scene-theme-toggle"
+        onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+      >
+        {mode === "dark" ? "Light mode" : "Dark mode"}
+      </button>
       <div className="dashboard-wide">
         <header className="dashboard-header">
           <div>
@@ -141,12 +187,6 @@ export default function ProfileScene({
           </div>
           <div className="dashboard-actions">
             <AppNav active={activeRoute} onNavigate={onNavigate} />
-            <button type="button" className="ghost-button" onClick={() => setMode(mode === "dark" ? "light" : "dark")}>
-              {mode === "dark" ? "Light mode" : "Dark mode"}
-            </button>
-            <button type="button" className="ghost-button" onClick={handleLogout}>
-              Log out
-            </button>
           </div>
         </header>
       </div>
@@ -182,17 +222,6 @@ export default function ProfileScene({
                     />
                   </div>
                   <div className="profile-field">
-                    <label htmlFor="profile-username">Username (optional)</label>
-                    <input
-                      id="profile-username"
-                      type="text"
-                      value={profile.username}
-                      onChange={(event) => setProfile({ ...profile, username: event.target.value })}
-                      disabled={!isEditingAccount}
-                      placeholder="Optional handle"
-                    />
-                  </div>
-                  <div className="profile-field">
                     <label>Email address</label>
                     <div className="profile-static">{signedInEmail}</div>
                   </div>
@@ -205,6 +234,9 @@ export default function ProfileScene({
                     disabled={isEditingAccount}
                   >
                     Edit profile
+                  </button>
+                  <button type="button" className="ghost-button" onClick={handleLogout}>
+                    Log out
                   </button>
                   {isEditingAccount ? (
                     <button type="button" className="primary-button" onClick={handleAccountSave} disabled={accountPending}>
@@ -225,14 +257,20 @@ export default function ProfileScene({
                   <span className="card-subtitle">Password</span>
                 </div>
                 <div className="profile-actions">
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => setIsChangingPassword((prev) => !prev)}
-                  >
-                    Change password
-                  </button>
+                  {!isChangingPassword ? (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => {
+                        setPasswordError("");
+                        setIsChangingPassword(true);
+                      }}
+                    >
+                      Change password
+                    </button>
+                  ) : null}
                   {passwordSaved ? <span className="profile-saved">Password saved</span> : null}
+                  {passwordError ? <span className="profile-saved">{passwordError}</span> : null}
                 </div>
                 {isChangingPassword ? (
                   <div className="profile-field-grid">
@@ -243,9 +281,43 @@ export default function ProfileScene({
                         type="password"
                         value={passwordDraft.next}
                         onChange={(event) => setPasswordDraft({ ...passwordDraft, next: event.target.value })}
+                        onFocus={() => setPasswordFocused(true)}
+                        onBlur={() => setPasswordFocused(false)}
                         placeholder="Enter new password"
+                        autoComplete="new-password"
+                        className={passwordsMismatch ? "profile-input--error" : ""}
                       />
                     </div>
+                    <AnimatePresence>
+                      {passwordFocused ? (
+                        <motion.div
+                          className="password-rules-panel"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.25, ease: "easeOut" }}
+                        >
+                          <p className="password-rules-panel__title">Password rules</p>
+                          <div className="password-rules-panel__grid">
+                            {passwordRules.map((rule) => (
+                              <div key={rule.id} className="password-rules-panel__row">
+                                <motion.span
+                                  className={`password-rules-panel__dot ${
+                                    rule.ok ? "password-rules-panel__dot--ok" : ""
+                                  }`}
+                                  initial={false}
+                                  animate={rule.ok ? { scale: [0.82, 1], opacity: [0.65, 1] } : { scale: 1, opacity: 0.65 }}
+                                  transition={{ duration: 0.25 }}
+                                >
+                                  {rule.ok ? "OK" : "X"}
+                                </motion.span>
+                                <span className={rule.ok ? "password-rules-panel__text--ok" : ""}>{rule.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
                     <div className="profile-field">
                       <label htmlFor="profile-password-confirm">Confirm password</label>
                       <input
@@ -254,37 +326,33 @@ export default function ProfileScene({
                         value={passwordDraft.confirm}
                         onChange={(event) => setPasswordDraft({ ...passwordDraft, confirm: event.target.value })}
                         placeholder="Confirm new password"
+                        autoComplete="new-password"
+                        className={passwordsMismatch ? "profile-input--error" : ""}
                       />
                     </div>
-                    <div className="profile-actions">
+                    <div className="profile-actions profile-actions--password">
+                      {passwordsMismatch ? <span className="profile-error profile-error--full">Passwords don't match</span> : null}
                       <button
                         type="button"
                         className="primary-button"
-                        onClick={handlePasswordSave}
-                        disabled={!passwordDraft.next || passwordDraft.next !== passwordDraft.confirm}
+                        onClick={() => void handlePasswordSave()}
+                        disabled={
+                          passwordPending ||
+                          !isPasswordValid ||
+                          !passwordDraft.next ||
+                          passwordDraft.next !== passwordDraft.confirm
+                        }
                       >
-                        Save
+                        {passwordPending ? "Saving..." : "Save"}
+                      </button>
+                      <button type="button" className="ghost-button" onClick={handlePasswordCancel}>
+                        Cancel
                       </button>
                     </div>
                   </div>
                 ) : null}
               </div>
 
-              <div className="dashboard-card profile-card profile-card--account" style={{ ["--card-index" as string]: 2 }}>
-                <div className="card-header">
-                  <h3>Data controls</h3>
-                  <span className="card-subtitle">Trust and safety</span>
-                </div>
-                <div className="profile-actions">
-                  <button type="button" className="ghost-button">
-                    Export data (coming soon)
-                  </button>
-                  <button type="button" className="danger-button">
-                    Reset streak
-                  </button>
-                </div>
-                <p className="profile-note">Relapse does not erase progress. Reset only changes the clock.</p>
-              </div>
             </div>
           </section>
 

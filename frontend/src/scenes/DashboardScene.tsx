@@ -40,7 +40,11 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
   const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
   const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
   const [, setRelapseLog] = useLocalStorage<RelapseEvent[]>("quitotine:relapse", []);
-  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", "dark");
+  const initialMode: ThemeMode =
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", initialMode);
   const [futureMessage] = useLocalStorage<FutureMessage | null>("quitotine:futureMessage", null);
   const [relapseTags, setRelapseTags] = useState<string[]>([]);
   const [relapseNote, setRelapseNote] = useState("");
@@ -230,7 +234,11 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
           </div>
           <div className="dashboard-actions">
             <AppNav active={activeRoute} onNavigate={onNavigate} />
-            <button type="button" className="ghost-button" onClick={() => setMode(mode === "dark" ? "light" : "dark")}>
+            <button
+              type="button"
+              className="ghost-button scene-theme-toggle"
+              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+            >
               {mode === "dark" ? "Light mode" : "Dark mode"}
             </button>
           </div>

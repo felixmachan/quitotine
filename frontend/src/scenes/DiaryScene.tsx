@@ -13,7 +13,11 @@ type ThemeMode = "dark" | "light";
 
 export default function DiaryScene({ activeRoute, onNavigate, entered = false }: DiarySceneProps) {
   const [journalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
-  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", "dark");
+  const initialMode: ThemeMode =
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", initialMode);
   const [query, setQuery] = useState("");
 
   const formatDay = (isoDate: string) => {
@@ -81,7 +85,11 @@ export default function DiaryScene({ activeRoute, onNavigate, entered = false }:
           </div>
           <div className="dashboard-actions">
             <AppNav active={activeRoute} onNavigate={onNavigate} />
-            <button type="button" className="ghost-button" onClick={() => setMode(mode === "dark" ? "light" : "dark")}>
+            <button
+              type="button"
+              className="ghost-button scene-theme-toggle"
+              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+            >
               {mode === "dark" ? "Light mode" : "Dark mode"}
             </button>
           </div>

@@ -42,7 +42,11 @@ interface ScienceSceneProps {
 type ThemeMode = "dark" | "light";
 
 export default function ScienceScene({ activeRoute, onNavigate, entered = false }: ScienceSceneProps) {
-  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", "dark");
+  const initialMode: ThemeMode =
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", initialMode);
 
   useEffect(() => {
     document.body.dataset.themeMode = mode;
@@ -64,7 +68,11 @@ export default function ScienceScene({ activeRoute, onNavigate, entered = false 
           </div>
           <div className="dashboard-actions">
             <AppNav active={activeRoute} onNavigate={onNavigate} />
-            <button type="button" className="ghost-button" onClick={() => setMode(mode === "dark" ? "light" : "dark")}>
+            <button
+              type="button"
+              className="ghost-button scene-theme-toggle"
+              onClick={() => setMode(mode === "dark" ? "light" : "dark")}
+            >
               {mode === "dark" ? "Light mode" : "Dark mode"}
             </button>
           </div>

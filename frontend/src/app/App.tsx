@@ -313,10 +313,38 @@ export default function App() {
     });
   };
 
+  const changePassword = async (password: string) => {
+    if (!authTokens?.accessToken) {
+      throw new Error("Not authenticated.");
+    }
+    const response = await fetch(`${API_BASE}/profile/password`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authTokens.accessToken}`
+      },
+      body: JSON.stringify({ password })
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        setAuthTokens(null);
+        setAuthUser(null);
+        navigate("/login", true);
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw new Error(`Could not change password${await parseError(response)}.`);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated || !authTokens?.accessToken) return;
     void fetchMe(authTokens.accessToken);
   }, [authTokens?.accessToken, isAuthenticated]);
+
+  useEffect(() => {
+    if (route !== "/profile" || !authTokens?.accessToken) return;
+    void fetchMe(authTokens.accessToken);
+  }, [route, authTokens?.accessToken]);
 
   useEffect(() => {
     if (route === "/knowledge") {
@@ -383,6 +411,7 @@ export default function App() {
           authUser={authUser}
           onLogout={logout}
           onAccountSave={saveAccount}
+          onPasswordChange={changePassword}
         />
       </div>
     );
