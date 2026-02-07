@@ -2770,6 +2770,35 @@ body[data-theme-mode="light"] .app-background {
   padding: 5px;
 }
 
+.chart-card .card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chart-card .card-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.chart-view-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: rgba(220, 248, 248, 0.78);
+}
+
+.chart-view-control select {
+  border-radius: 999px;
+  border: 1px solid rgba(120, 240, 220, 0.24);
+  background: rgba(10, 24, 32, 0.6);
+  color: inherit;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
 .chart-line {
   width: 100%;
   height: 340px;
@@ -2902,6 +2931,54 @@ body[data-theme-mode="light"] .app-background {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
+}
+
+.heatmap-card {
+  grid-column: 1 / -1;
+}
+
+.heatmap-shell {
+  display: grid;
+  grid-template-columns: 120px repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.heatmap-corner {
+  min-height: 34px;
+}
+
+.heatmap-col-head {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: rgba(220, 248, 248, 0.7);
+  text-align: center;
+  align-self: end;
+}
+
+.heatmap-row-head {
+  display: flex;
+  align-items: center;
+  font-size: 0.82rem;
+  color: rgba(220, 248, 248, 0.82);
+}
+
+.heatmap-cell {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 240, 220, 0.14);
+  background: color-mix(in srgb, #ffffff 100%, rgba(120, 240, 220, 0) 0%);
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  color: rgba(12, 24, 30, 0.76);
+  font-variant-numeric: tabular-nums;
+  background-color: color-mix(in srgb, #ffffff calc((1 - var(--heat, 0)) * 100%), rgba(70, 200, 190, 0.95));
+}
+
+.time-grid--below {
+  margin-top: 14px;
+  max-width: 520px;
 }
 
 .time-bar {
@@ -3059,6 +3136,16 @@ body[data-theme-mode="light"] .app-background {
   fill: rgba(12, 24, 30, 0.8);
 }
 
+.dashboard-shell[data-theme-mode="light"] .chart-view-control {
+  color: rgba(12, 24, 30, 0.7);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-view-control select {
+  background: rgba(250, 255, 255, 0.96);
+  border-color: rgba(8, 40, 48, 0.2);
+  color: rgba(12, 24, 30, 0.84);
+}
+
 .dashboard-shell[data-theme-mode="light"] .chart-area {
   fill: rgba(70, 200, 190, 0.16);
 }
@@ -3082,6 +3169,50 @@ body[data-theme-mode="light"] .app-background {
 
 .dashboard-shell[data-theme-mode="light"] .chart-point--mood {
   fill: rgba(56, 170, 206, 0.95);
+}
+
+.dashboard-shell[data-theme-mode="light"] .heatmap-col-head {
+  color: rgba(12, 24, 30, 0.65);
+}
+
+.dashboard-shell[data-theme-mode="light"] .heatmap-row-head {
+  color: rgba(12, 24, 30, 0.82);
+}
+
+.dashboard-shell[data-theme-mode="light"] .heatmap-cell {
+  border-color: rgba(8, 40, 48, 0.12);
+  color: rgba(12, 24, 30, 0.8);
+  background-color: color-mix(in srgb, #ffffff calc((1 - var(--heat, 0)) * 100%), rgba(70, 200, 190, 0.96));
+}
+
+.dashboard-shell[data-theme-mode="dark"] .heatmap-col-head {
+  color: rgba(214, 235, 244, 0.72);
+}
+
+.dashboard-shell[data-theme-mode="dark"] .heatmap-row-head {
+  color: rgba(228, 247, 255, 0.86);
+}
+
+.dashboard-shell[data-theme-mode="dark"] .heatmap-cell {
+  border-color: rgba(141, 231, 246, 0.2);
+  color: rgba(230, 247, 255, 0.92);
+  background-color: color-mix(in srgb, rgba(9, 24, 30, 1) calc((1 - var(--heat, 0)) * 100%), rgba(141, 231, 246, 0.95));
+}
+
+@media (max-width: 1000px) {
+  .heatmap-shell {
+    grid-template-columns: 84px repeat(6, minmax(0, 1fr));
+  }
+
+  .heatmap-col-head,
+  .heatmap-row-head,
+  .heatmap-cell {
+    font-size: 0.7rem;
+  }
+
+  .heatmap-cell {
+    min-height: 34px;
+  }
 }
 
 .dashboard-shell[data-theme-mode="light"] .chart-guide-line {

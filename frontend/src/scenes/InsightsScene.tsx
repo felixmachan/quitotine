@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthTokens, OnboardingData, ProfileData } from "../app/types";
 import { useLocalStorage } from "../app/useLocalStorage";
 import { buildQuitPlan, getJourneyProgress, toIsoDate, type JournalEntry, type QuitPlan } from "../app/quitLogic";
@@ -20,6 +20,7 @@ interface InsightsSceneProps {
 }
 
 type ThemeMode = "dark" | "light";
+type ChartView = "1d" | "1w" | "1m" | "all";
 
 interface CarrInsight {
   id: string;
@@ -33,6 +34,14 @@ interface CarrInsight {
 interface FutureMessage {
   day: number;
   message: string;
+  createdAt: string;
+}
+
+interface CravingLog {
+  date: string;
+  hour: number;
+  intensity: number;
+  source: "journal" | "backend";
   createdAt: string;
 }
 
@@ -51,6 +60,7 @@ const DEFAULT_PROFILE: ProfileData = {
 export default function InsightsScene({ data, activeRoute, onNavigate, entered = false }: InsightsSceneProps) {
   const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
   const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
+  const [cravingLogs, setCravingLogs] = useLocalStorage<CravingLog[]>("quitotine:cravingLogs", []);
   const [authTokens] = useLocalStorage<AuthTokens | null>("quitotine:authTokens", null);
   const initialMode: ThemeMode =
     typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -64,6 +74,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const [importError, setImportError] = useState("");
   const importRunRef = useRef(0);
   const [chartAnimKey, setChartAnimKey] = useState(0);
+  const [chartView, setChartView] = useState<ChartView>("1m");
   const [hoverCravingIndex, setHoverCravingIndex] = useState<number | null>(null);
   const [hoverMoodIndex, setHoverMoodIndex] = useState<number | null>(null);
 
@@ -106,15 +117,23 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const entryByDate = useMemo(() => new Map(journalEntries.map((entry) => [entry.date, entry])), [journalEntries]);
   const recentSeries = useMemo(() => {
     const days: { date: string; cravings: number; mood: number }[] = [];
-    for (let i = 13; i >= 0; i -= 1) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const key = toIsoDate(date);
+    const today = new Date();
+    const sortedDates = journalEntries.map((entry) => entry.date).sort();
+    const firstDataDate = sortedDates.length ? new Date(`${sortedDates[0]}T00:00:00`) : null;
+    const fallbackStart = new Date();
+    fallbackStart.setDate(fallbackStart.getDate() - 13);
+    const startDate = firstDataDate && firstDataDate < today ? firstDataDate : fallbackStart;
+    startDate.setHours(0, 0, 0, 0);
+
+    const cursor = new Date(startDate);
+    while (cursor <= today) {
+      const key = toIsoDate(cursor);
       const entry = entryByDate.get(key);
       days.push({ date: key, cravings: entry?.cravings ?? 0, mood: entry?.mood ?? 0 });
+      cursor.setDate(cursor.getDate() + 1);
     }
     return days;
-  }, [entryByDate]);
+  }, [entryByDate, journalEntries]);
 
   const average = (values: number[]) => {
     if (!values.length) return 0;
@@ -151,7 +170,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const durationUnlock = Math.max(0, 7 - journalEntries.length);
   const durationReady = journalEntries.length >= 7;
 
-  const buildTrendGeometry = (values: number[]) => {
+  const buildTrendGeometry = (values: number[], dates: string[]) => {
     const width = 760;
     const height = 360;
     const left = 44;
@@ -162,7 +181,8 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     const innerHeight = height - top - bottom;
     const yMax = 10;
 
-    const toX = (index: number) => left + (index / (values.length - 1)) * innerWidth;
+    const denominator = Math.max(1, values.length - 1);
+    const toX = (index: number) => left + (index / denominator) * innerWidth;
     const toY = (value: number) => top + (1 - Math.max(0, Math.min(yMax, value)) / yMax) * innerHeight;
 
     const linePoints = values.map((value, index) => `${toX(index)},${toY(value)}`).join(" ");
@@ -170,9 +190,9 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     const ticks = [0, 2, 4, 6, 8, 10].map((tick) => ({ value: tick, y: toY(tick) }));
 
     const xLabels = [
-      { index: 0, label: recentSeries[0]?.date ?? "" },
-      { index: Math.floor((values.length - 1) / 2), label: recentSeries[Math.floor((values.length - 1) / 2)]?.date ?? "" },
-      { index: values.length - 1, label: recentSeries[values.length - 1]?.date ?? "" }
+      { index: 0, label: dates[0] ?? "" },
+      { index: Math.floor((values.length - 1) / 2), label: dates[Math.floor((values.length - 1) / 2)] ?? "" },
+      { index: values.length - 1, label: dates[values.length - 1] ?? "" }
     ].map((item) => {
       const date = item.label ? new Date(`${item.label}T00:00:00`) : null;
       const text = date ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
@@ -182,14 +202,69 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     return { width, height, left, right, innerWidth, innerHeight, top, bottom, linePoints, areaPoints, ticks, xLabels, toX, toY };
   };
 
-  const cravingsSeries = recentSeries.map((day) => day.cravings);
-  const moodSeries = recentSeries.map((day) => day.mood);
+  const filteredSeries = useMemo(() => {
+    if (chartView === "all") return recentSeries;
+    const daysBack = chartView === "1d" ? 1 : chartView === "1w" ? 7 : 30;
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - (daysBack - 1));
+    const startKey = toIsoDate(start);
+    return recentSeries.filter((item) => item.date >= startKey);
+  }, [chartView, recentSeries]);
+
+  const filteredCravingsSeries = filteredSeries.map((day) => day.cravings);
+  const filteredMoodSeries = filteredSeries.map((day) => day.mood);
 
   useEffect(() => {
     if (!chartUnlock) {
       setChartAnimKey((prev) => prev + 1);
     }
-  }, [chartUnlock, cravingsSeries.join("|"), moodSeries.join("|")]);
+  }, [chartUnlock, filteredCravingsSeries.join("|"), filteredMoodSeries.join("|"), chartView]);
+
+  useEffect(() => {
+    setHoverCravingIndex(null);
+    setHoverMoodIndex(null);
+  }, [chartView, filteredSeries.length]);
+
+  const heatmapDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const heatmapSlots = [
+    { label: "0:00-4:00", start: 0, end: 4 },
+    { label: "4:00-8:00", start: 4, end: 8 },
+    { label: "8:00-12:00", start: 8, end: 12 },
+    { label: "12:00-16:00", start: 12, end: 16 },
+    { label: "16:00-20:00", start: 16, end: 20 },
+    { label: "20:00-24:00", start: 20, end: 24 }
+  ];
+
+  const effectiveCravingLogs = useMemo(() => {
+    if (cravingLogs.length) return cravingLogs;
+    return journalEntries
+      .filter((entry) => entry.cravings > 0 && entry.createdAt)
+      .map((entry) => {
+        const created = new Date(entry.createdAt as string);
+        return {
+          date: entry.date,
+          hour: created.getHours(),
+          intensity: entry.cravings,
+          source: "journal" as const,
+          createdAt: entry.createdAt as string
+        };
+      });
+  }, [cravingLogs, journalEntries]);
+
+  const heatmapMatrix = useMemo(() => {
+    const matrix = Array.from({ length: 7 }, () => Array.from({ length: 6 }, () => 0));
+    effectiveCravingLogs.forEach((log) => {
+      const date = new Date(`${log.date}T00:00:00`);
+      const weekday = date.getDay();
+      const slot = Math.min(5, Math.floor(log.hour / 4));
+      matrix[weekday][slot] += log.intensity;
+    });
+    return matrix;
+  }, [effectiveCravingLogs]);
+
+  const heatmapMax = useMemo(() => Math.max(1, ...heatmapMatrix.flat()), [heatmapMatrix]);
+  const heatmapReady = useMemo(() => heatmapMatrix.flat().some((value) => value > 0), [heatmapMatrix]);
 
   const timeBuckets = useMemo(() => {
     const buckets = {
@@ -198,22 +273,18 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
       evening: [] as number[],
       night: [] as number[]
     };
-    journalEntries.forEach((entry) => {
-      if (!entry.createdAt) return;
-      const hour = new Date(entry.createdAt).getHours();
-      if (hour >= 5 && hour < 11) buckets.morning.push(entry.cravings);
-      else if (hour >= 11 && hour < 17) buckets.afternoon.push(entry.cravings);
-      else if (hour >= 17 && hour < 22) buckets.evening.push(entry.cravings);
-      else buckets.night.push(entry.cravings);
+    effectiveCravingLogs.forEach((log) => {
+      if (log.hour >= 5 && log.hour < 11) buckets.morning.push(log.intensity);
+      else if (log.hour >= 11 && log.hour < 17) buckets.afternoon.push(log.intensity);
+      else if (log.hour >= 17 && log.hour < 22) buckets.evening.push(log.intensity);
+      else buckets.night.push(log.intensity);
     });
     return Object.entries(buckets).map(([label, values]) => ({
       label,
       avg: values.length ? average(values) : 0,
       count: values.length
     }));
-  }, [journalEntries]);
-
-  const timeReady = timeBuckets.some((bucket) => bucket.count >= 2);
+  }, [effectiveCravingLogs]);
 
   const formatUnlock = (needed: number) =>
     `Not enough data yet - log ${needed} more check-in${needed === 1 ? "" : "s"} to unlock.`;
@@ -250,8 +321,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     try {
       const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
       const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - 20);
+      const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
       const url = `${apiBase}/events?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`;
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${authTokens.accessToken}` }
@@ -306,6 +376,31 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
         byDate.set(key, prev);
       });
 
+      const cursor = new Date(start);
+      const endDate = new Date(end);
+      while (cursor <= endDate) {
+        const key = toIsoDate(cursor);
+        if (!byDate.has(key)) {
+          byDate.set(key, {
+            moodSum: 5,
+            moodN: 1,
+            cravingSum: 0,
+            cravingN: 1,
+            note: "",
+            createdAt: new Date(
+              cursor.getFullYear(),
+              cursor.getMonth(),
+              cursor.getDate(),
+              12,
+              0,
+              0,
+              0
+            ).toISOString()
+          });
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
       const imported: JournalEntry[] = Array.from(byDate.entries())
         .map(([date, value]) => ({
           date,
@@ -316,8 +411,22 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
         }))
         .sort((a, b) => (a.date < b.date ? 1 : -1));
 
+      const importedCravingLogs: CravingLog[] = rows
+        .filter((row) => row.event_type === "craving" || row.event_type === "relapse")
+        .map((row) => {
+          const dt = new Date(row.occurred_at);
+          return {
+            date: toIsoDate(dt),
+            hour: dt.getHours(),
+            intensity: row.event_type === "relapse" ? 8 : Math.max(1, row.intensity ?? 1),
+            source: "backend",
+            createdAt: row.occurred_at
+          };
+        });
+
       if (runId === importRunRef.current) {
         setJournalEntries(imported);
+        setCravingLogs(importedCravingLogs);
         setImportError("");
       }
     } catch {
@@ -325,7 +434,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
         setImportError(journalEntries.length ? "" : "Import failed due to a network or parsing error.");
       }
     }
-  }, [authTokens?.accessToken, journalEntries.length, setJournalEntries]);
+  }, [authTokens?.accessToken, journalEntries.length, setCravingLogs, setJournalEntries]);
 
   useEffect(() => {
     void handleImportFromBackend();
@@ -402,15 +511,28 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
 
           <div className="dashboard-card chart-card" style={{ ["--card-index" as string]: 1 }}>
             <div className="card-header">
-              <h3>Cravings trend</h3>
-              <span className="card-subtitle">14-day signal line</span>
+              <div>
+                <h3>Cravings trend</h3>
+                <span className="card-subtitle">Full-period signal line</span>
+              </div>
+              <label className="chart-view-control">
+                <span>View</span>
+                <select value={chartView} onChange={(event) => setChartView(event.target.value as ChartView)}>
+                  <option value="1d">1 day</option>
+                  <option value="1w">1 week</option>
+                  <option value="1m">1 month</option>
+                  <option value="all">All time</option>
+                </select>
+              </label>
             </div>
-            {chartUnlock ? (
-              <div className="chart-placeholder">{formatUnlock(chartUnlock)}</div>
+            {chartUnlock || filteredSeries.length < 2 ? (
+              <div className="chart-placeholder">
+                {chartUnlock ? formatUnlock(chartUnlock) : "Not enough points in this view. Select a wider range."}
+              </div>
             ) : (
               <div className="chart-shell">
                 {(() => {
-                  const chart = buildTrendGeometry(cravingsSeries);
+                  const chart = buildTrendGeometry(filteredCravingsSeries, filteredSeries.map((item) => item.date));
                   const gradientId = `cravings-area-grad-${chartAnimKey}`;
                   return (
                     <svg
@@ -445,7 +567,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                       </text>
                       <polygon points={chart.areaPoints} className="chart-area chart-area--animate" style={{ fill: `url(#${gradientId})` }} />
                       <polyline points={chart.linePoints} className="chart-polyline chart-polyline--animate" pathLength={1} />
-                      {cravingsSeries.map((value, index) => {
+                      {filteredCravingsSeries.map((value, index) => {
                         const x = chart.toX(index);
                         const y = chart.toY(value);
                         return (
@@ -462,8 +584,8 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                         );
                       })}
                       {hoverCravingIndex !== null ? (() => {
-                        const value = cravingsSeries[hoverCravingIndex];
-                        const date = recentSeries[hoverCravingIndex]?.date ?? "";
+                        const value = filteredCravingsSeries[hoverCravingIndex];
+                        const date = filteredSeries[hoverCravingIndex]?.date ?? "";
                         const x = chart.toX(hoverCravingIndex);
                         const y = chart.toY(value);
                         const boxX = Math.max(chart.left + 6, Math.min(chart.width - 130, x - 62));
@@ -492,22 +614,35 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                     </svg>
                   );
                 })()}
-                <div className="chart-axis">Cravings/day, last 14 days</div>
+                <div className="chart-axis">Cravings/day, full available range</div>
               </div>
             )}
           </div>
 
           <div className="dashboard-card chart-card" style={{ ["--card-index" as string]: 2 }}>
             <div className="card-header">
-              <h3>Mood trend</h3>
-              <span className="card-subtitle">14-day signal line</span>
+              <div>
+                <h3>Mood trend</h3>
+                <span className="card-subtitle">Full-period signal line</span>
+              </div>
+              <label className="chart-view-control">
+                <span>View</span>
+                <select value={chartView} onChange={(event) => setChartView(event.target.value as ChartView)}>
+                  <option value="1d">1 day</option>
+                  <option value="1w">1 week</option>
+                  <option value="1m">1 month</option>
+                  <option value="all">All time</option>
+                </select>
+              </label>
             </div>
-            {chartUnlock ? (
-              <div className="chart-placeholder">{formatUnlock(chartUnlock)}</div>
+            {chartUnlock || filteredSeries.length < 2 ? (
+              <div className="chart-placeholder">
+                {chartUnlock ? formatUnlock(chartUnlock) : "Not enough points in this view. Select a wider range."}
+              </div>
             ) : (
               <div className="chart-shell">
                 {(() => {
-                  const chart = buildTrendGeometry(moodSeries);
+                  const chart = buildTrendGeometry(filteredMoodSeries, filteredSeries.map((item) => item.date));
                   const gradientId = `mood-area-grad-${chartAnimKey}`;
                   return (
                     <svg
@@ -550,7 +685,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                         className="chart-polyline chart-polyline--mood chart-polyline--animate"
                         pathLength={1}
                       />
-                      {moodSeries.map((value, index) => {
+                      {filteredMoodSeries.map((value, index) => {
                         const x = chart.toX(index);
                         const y = chart.toY(value);
                         return (
@@ -567,8 +702,8 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                         );
                       })}
                       {hoverMoodIndex !== null ? (() => {
-                        const value = moodSeries[hoverMoodIndex];
-                        const date = recentSeries[hoverMoodIndex]?.date ?? "";
+                        const value = filteredMoodSeries[hoverMoodIndex];
+                        const date = filteredSeries[hoverMoodIndex]?.date ?? "";
                         const x = chart.toX(hoverMoodIndex);
                         const y = chart.toY(value);
                         const boxX = Math.max(chart.left + 6, Math.min(chart.width - 130, x - 62));
@@ -597,27 +732,58 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                     </svg>
                   );
                 })()}
-                <div className="chart-axis">Mood score, last 14 days</div>
+                <div className="chart-axis">Mood score, full available range</div>
               </div>
             )}
           </div>
 
-          <div className="dashboard-card chart-card" style={{ ["--card-index" as string]: 3 }}>
+          <div className="dashboard-card chart-card heatmap-card" style={{ ["--card-index" as string]: 3 }}>
             <div className="card-header">
               <h3>Time-of-day distribution</h3>
-              <span className="card-subtitle">Cravings by window, averaged</span>
+              <span className="card-subtitle">Craving intensity by weekday and 4-hour window</span>
             </div>
-            {timeReady ? (
-              <div className="time-grid">
-                {timeBuckets.map((bucket) => (
-                  <div key={bucket.label} className="time-bar" style={{ ["--bar" as string]: bucket.avg / 10 }}>
-                    <span>{bucket.label}</span>
-                    <strong>{bucket.avg ? bucket.avg.toFixed(1) : "--"}</strong>
-                  </div>
-                ))}
-              </div>
+            {heatmapReady ? (
+              <>
+                <div className="heatmap-shell" role="table" aria-label="Craving heatmap by weekday and time window">
+                  <div className="heatmap-corner" />
+                  {heatmapSlots.map((slot) => (
+                    <div key={slot.label} className="heatmap-col-head">
+                      {slot.label}
+                    </div>
+                  ))}
+
+                  {heatmapDays.map((day, dayIndex) => (
+                    <Fragment key={day}>
+                      <div className="heatmap-row-head">{day}</div>
+                      {heatmapSlots.map((slot, slotIndex) => {
+                        const value = heatmapMatrix[dayIndex][slotIndex];
+                        const intensity = value / heatmapMax;
+                        return (
+                          <div
+                            key={`${day}-${slot.label}`}
+                            className="heatmap-cell"
+                            style={{ ["--heat" as string]: intensity }}
+                            title={`${day}, ${slot.label} - ${value.toFixed(1)} craving score`}
+                          >
+                            {value > 0 ? value.toFixed(1).replace(/\.0$/, "") : "0"}
+                          </div>
+                        );
+                      })}
+                    </Fragment>
+                  ))}
+                </div>
+
+                <div className="time-grid time-grid--below">
+                  {timeBuckets.map((bucket) => (
+                    <div key={bucket.label} className="time-bar" style={{ ["--bar" as string]: bucket.avg / 10 }}>
+                      <span>{bucket.label}</span>
+                      <strong>{bucket.avg ? bucket.avg.toFixed(1) : "--"}</strong>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
-              <div className="chart-placeholder">Not enough data yet - log 5 more timed check-ins to unlock.</div>
+              <div className="chart-placeholder">Not enough timestamped craving logs yet to render the heatmap.</div>
             )}
           </div>
 
