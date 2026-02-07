@@ -15,6 +15,7 @@ export default function HeroScene({ id }: HeroSceneProps) {
     <StickySection
       id={id}
       className="overflow-hidden"
+      sectionPaddingClass="py-0"
       contentClassName="section-inner-wide w-[84vw]"
       heightClassName="min-h-[110vh]"
       debugLabel="hero"

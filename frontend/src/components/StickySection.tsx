@@ -11,6 +11,7 @@ interface StickySectionProps {
   id: string;
   children: ReactNode;
   className?: string;
+  sectionPaddingClass?: string;
   contentClassName?: string;
   heightClassName?: string;
   debugLabel?: string;
@@ -25,6 +26,7 @@ export default function StickySection({
   id,
   children,
   className = "",
+  sectionPaddingClass = "py-[12vh]",
   contentClassName = "",
   heightClassName = "min-h-[220vh]",
   debugLabel,
@@ -78,7 +80,11 @@ export default function StickySection({
   });
 
   return (
-    <section id={id} ref={ref} className={`relative w-full py-[12vh] ${heightClassName} ${className}`}>
+    <section
+      id={id}
+      ref={ref}
+      className={`relative w-full ${sectionPaddingClass} ${heightClassName} ${className}`}
+    >
       {background ? (
         <div className="pointer-events-none absolute inset-0">{background}</div>
       ) : null}

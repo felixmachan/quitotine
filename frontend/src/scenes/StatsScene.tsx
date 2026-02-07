@@ -12,7 +12,8 @@ export default function StatsScene({ id }: StatsSceneProps) {
 
   const handleProgressChange = (progress: number) => {
     const start = 0.2;
-    const end = 0.8;
+    // Reach the final 75% before sticky release, then transition out immediately.
+    const end = 0.74;
     const clamped = Math.max(start, Math.min(end, progress));
     const normalized = (clamped - start) / (end - start);
     setCounter(Math.round(50 + normalized * 25));

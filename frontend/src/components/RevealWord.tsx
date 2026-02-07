@@ -7,6 +7,7 @@ interface RevealWordProps {
 }
 
 const SCRAMBLE_CHARS = ">#&]$ßäđŋøü?+@*%<>[]{}0123456789";
+const SCRAMBLE_LENGTH = 6;
 
 const scramble = (length: number) => {
   let out = "";
@@ -26,24 +27,27 @@ export default function RevealWord({ word, reveal }: RevealWordProps) {
   const timerRef = useRef<number | null>(null);
   const cycleRef = useRef<"word" | "reveal">("word");
   const wordMeasureRef = useRef<HTMLSpanElement | null>(null);
-  const revealMeasureRef = useRef<HTMLSpanElement | null>(null);
-  const [revealScaleX, setRevealScaleX] = useState(1);
+  const displayMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const [fitScaleX, setFitScaleX] = useState(1);
   const [wordWidth, setWordWidth] = useState<number | null>(null);
 
   useEffect(() => {
     const measure = () => {
-      if (!wordMeasureRef.current || !revealMeasureRef.current) return;
+      if (!wordMeasureRef.current || !displayMeasureRef.current) return;
       const measuredWordWidth = wordMeasureRef.current.offsetWidth;
-      const revealWidth = revealMeasureRef.current.offsetWidth;
-      if (measuredWordWidth > 0 && revealWidth > 0) {
-        setRevealScaleX(measuredWordWidth / revealWidth);
+      const measuredDisplayWidth = displayMeasureRef.current.offsetWidth;
+      if (measuredWordWidth > 0) {
         setWordWidth(measuredWordWidth);
+      }
+      if (measuredWordWidth > 0 && measuredDisplayWidth > 0) {
+        // Only shrink when needed so glyphs keep natural proportions as much as possible.
+        setFitScaleX(Math.min(1, measuredWordWidth / measuredDisplayWidth));
       }
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [reveal, word]);
+  }, [displayText, word]);
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -62,7 +66,7 @@ export default function RevealWord({ word, reveal }: RevealWordProps) {
       const start = Date.now();
       intervalRef.current = window.setInterval(() => {
         const elapsed = Date.now() - start;
-        setDisplayText(scramble(8));
+        setDisplayText(scramble(SCRAMBLE_LENGTH));
         if (elapsed >= durationMs) {
           if (intervalRef.current) window.clearInterval(intervalRef.current);
           intervalRef.current = null;
@@ -100,8 +104,8 @@ export default function RevealWord({ word, reveal }: RevealWordProps) {
       <span ref={wordMeasureRef} className="absolute -z-10 opacity-0">
         {word}
       </span>
-      <span ref={revealMeasureRef} className="absolute -z-10 opacity-0">
-        {reveal}
+      <span ref={displayMeasureRef} className="absolute -z-10 opacity-0">
+        {displayText}
       </span>
       <motion.span
         className="relative z-10 inline-block align-baseline text-aurora"
@@ -112,7 +116,7 @@ export default function RevealWord({ word, reveal }: RevealWordProps) {
       </motion.span>
       <motion.span
         className="absolute left-0 top-0 z-20 inline-block origin-left text-aurora"
-        style={{ transform: `scaleX(${mode === "word" ? 1 : revealScaleX})` }}
+        style={{ transform: `scaleX(${mode === "word" ? 1 : fitScaleX})` }}
         animate={{ opacity: showOverlay ? 1 : 0 }}
         transition={{ duration: 0.15 }}
       >

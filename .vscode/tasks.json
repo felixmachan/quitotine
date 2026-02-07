@@ -1,60 +1,33 @@
-﻿{
+{
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "dev:backend",
+      "label": "Start Frontend",
       "type": "shell",
-      "command": "bash",
-      "args": ["-lc", "${workspaceFolder}/scripts/dev-backend.sh"],
-      "windows": {
-        "command": "powershell",
-        "args": [
-          "-NoProfile",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-File",
-          "${workspaceFolder}\\scripts\\dev-backend.ps1"
-        ]
-      },
+      "command": "cd frontend && npm run dev",
       "presentation": {
-        "reveal": "always",
-        "panel": "new",
-        "group": "dev"
+        "group": "dev",
+        "panel": "dedicated",
+        "clear": true
       },
       "problemMatcher": []
     },
     {
-      "label": "dev:frontend",
+      "label": "Start Backend",
       "type": "shell",
-      "command": "bash",
-      "args": ["-lc", "${workspaceFolder}/scripts/dev-frontend.sh"],
-      "windows": {
-        "command": "powershell",
-        "args": [
-          "-NoProfile",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-File",
-          "${workspaceFolder}\\scripts\\dev-frontend.ps1"
-        ]
-      },
+      "command": "cd backend && source venv/Scripts/activate && python app.py",
       "presentation": {
-        "reveal": "always",
-        "panel": "new",
-        "group": "dev"
+        "group": "dev",
+        "panel": "dedicated",
+        "clear": true
       },
       "problemMatcher": []
     },
     {
-      "label": "dev:all",
-      "dependsOrder": "parallel",
-      "dependsOn": ["dev:backend", "dev:frontend"],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "presentation": {
-        "reveal": "always"
+      "label": "Start Full Stack",
+      "dependsOn": ["Start Frontend", "Start Backend"],
+      "runOptions": {
+        "runOn": "folderOpen"
       }
     }
   ]

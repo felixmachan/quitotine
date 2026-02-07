@@ -80,22 +80,52 @@ export default function App() {
   const isAuthenticated = Boolean(authTokens?.accessToken);
 
   useEffect(() => {
-    const elements = sections.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = elements.findIndex((el) => el === entry.target);
-            if (index !== -1) setActiveIndex(index);
-          }
-        });
-      },
-      { threshold: 0.55 }
-    );
+    if (route !== "/") return;
 
-    elements.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [sections]);
+    const elements = sections
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => Boolean(el));
+    if (!elements.length) return;
+
+    let frame = 0;
+    const updateActiveSection = () => {
+      frame = 0;
+      const viewportCenter = window.innerHeight * 0.5;
+      let bestIndex = 0;
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      elements.forEach((element, index) => {
+        const rect = element.getBoundingClientRect();
+        const distance =
+          viewportCenter < rect.top
+            ? rect.top - viewportCenter
+            : viewportCenter > rect.bottom
+              ? viewportCenter - rect.bottom
+              : 0;
+
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      });
+
+      setActiveIndex(bestIndex);
+    };
+
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateActiveSection);
+    };
+
+    updateActiveSection();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+    };
+  }, [route, sections]);
 
   useEffect(() => {
     const handlePop = () => setRoute(window.location.pathname);
