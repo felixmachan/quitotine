@@ -23,10 +23,10 @@ export default function OnboardingReadyScene({
       id={id}
       sticky={false}
       className="!py-0"
-      heightClassName="h-[100svh]"
+      heightClassName="h-[100vh]"
       contentClassName="!max-w-none !px-0"
     >
-      <div className="flex h-[100svh] w-full items-center justify-center text-center">
+      <div className="flex h-[100vh] w-full items-center justify-center text-center">
         <LongPressCommitRitual
           label="I'm ready to quit nicotine"
           onCommit={onCommit}

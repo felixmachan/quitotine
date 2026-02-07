@@ -3,7 +3,6 @@ import {
   motion,
   useMotionTemplate,
   useMotionValueEvent,
-  useReducedMotion,
   useScroll,
   useTransform
 } from "framer-motion";
@@ -19,6 +18,7 @@ interface StickySectionProps {
   background?: ReactNode;
   overlay?: ReactNode;
   sticky?: boolean;
+  onProgressChange?: (progress: number) => void;
 }
 
 export default function StickySection({
@@ -26,26 +26,34 @@ export default function StickySection({
   children,
   className = "",
   contentClassName = "",
-  heightClassName = "min-h-[180svh]",
+  heightClassName = "min-h-[220vh]",
   debugLabel,
   sectionRef,
   background,
   overlay,
-  sticky = true
+  sticky = true,
+  onProgressChange
 }: StickySectionProps) {
   const localRef = useRef<HTMLElement | null>(null);
   const ref = sectionRef ?? localRef;
-  const reduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start end", "end start"]
   });
 
-  // Entry 0-0.2, hold 0.2-0.8 (60% plateau), exit 0.8-1.0 for clarity.
-  const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
-  const y = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [30, 0, 0, -30]);
-  const blur = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [6, 0, 0, 6]);
-  const filter = useMotionTemplate`blur(${blur}px)`;
+  // Bring transition zones inward so blur is visible earlier on enter/exit.
+  const opacity = useTransform(
+    scrollYProgress,
+    [0, 0.08, 0.18, 0.32, 0.68, 0.82, 0.92, 1],
+    [0, 0.12, 0.35, 1, 1, 0.35, 0.12, 0]
+  );
+  const y = useTransform(scrollYProgress, [0, 0.32, 0.68, 1], [24, 0, 0, -24]);
+  const blurPx = useTransform(
+    scrollYProgress,
+    [0, 0.08, 0.18, 0.32, 0.68, 0.82, 0.92, 1],
+    [15, 10, 5, 0, 0, 5, 10, 15]
+  );
+  const blurFilter = useMotionTemplate`blur(${blurPx}px)`;
   const lastLogged = useRef<number | null>(null);
 
   const debugEnabled =
@@ -55,13 +63,14 @@ export default function StickySection({
       (window as Window & { __SCROLL_DEBUG__?: boolean }).__SCROLL_DEBUG__ === true);
 
   useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    onProgressChange?.(latest);
     if (!debugEnabled) return;
     const rounded = Math.round(latest * 100);
     if (rounded % 5 !== 0 || lastLogged.current === rounded) return;
     const label = debugLabel ? `:${debugLabel}` : "";
     // Console check for plateau: progress + opacity/blur should be stable mid-range.
     console.log(
-      `[scroll${label}] ${rounded}% | opacity ${opacity.get().toFixed(2)} | blur ${blur
+      `[scroll${label}] ${rounded}% | opacity ${opacity.get().toFixed(2)} | blur ${blurPx
         .get()
         .toFixed(2)} | y ${y.get().toFixed(1)}`
     );
@@ -69,26 +78,29 @@ export default function StickySection({
   });
 
   return (
-    <section id={id} ref={ref} className={`relative w-full py-[12svh] ${heightClassName} ${className}`}>
+    <section id={id} ref={ref} className={`relative w-full py-[12vh] ${heightClassName} ${className}`}>
       {background ? (
         <div className="pointer-events-none absolute inset-0">{background}</div>
       ) : null}
       {overlay ? <div className="pointer-events-none absolute inset-0 z-20">{overlay}</div> : null}
       {sticky ? (
-        <div className="sticky top-1/2 w-full -translate-y-1/2">
+        <div className="sticky top-0 flex h-[100vh] w-full items-center">
           <motion.div
             className={`section-inner w-full ${contentClassName}`}
-            style={
-              reduceMotion
-                ? undefined
-                : {
-                    opacity,
-                    y,
-                    filter
-                  }
-            }
+            style={{
+              opacity,
+              y,
+              willChange: "opacity, transform"
+            }}
           >
-            {children}
+            <motion.div
+              style={{
+                filter: blurFilter,
+                willChange: "filter"
+              }}
+            >
+              {children}
+            </motion.div>
           </motion.div>
         </div>
       ) : (

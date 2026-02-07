@@ -31,7 +31,7 @@ export default function Section({ id, children, className = "", align = "center"
     <section
       id={id}
       ref={ref}
-      className={`relative flex min-h-[100svh] w-full ${alignClass[align]} ${className}`}
+      className={`relative flex min-h-[100vh] w-full ${alignClass[align]} ${className}`}
     >
       <motion.div
         className="section-inner w-full"

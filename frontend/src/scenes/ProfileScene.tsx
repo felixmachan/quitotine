@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { AuthUser, ProfileData } from "../app/types";
 import { useLocalStorage } from "../app/useLocalStorage";
-import { ProfileData } from "../app/types";
 import AppNav from "../components/AppNav";
 
 interface ProfileSceneProps {
   activeRoute: string;
   onNavigate: (route: string) => void;
+  authUser: AuthUser | null;
+  onLogout: () => Promise<void>;
+  onAccountSave: (displayName: string) => Promise<void>;
   entered?: boolean;
 }
 
@@ -52,17 +55,35 @@ const TRIGGER_GROUPS = [
   }
 ];
 
-export default function ProfileScene({ activeRoute, onNavigate, entered = false }: ProfileSceneProps) {
+export default function ProfileScene({
+  activeRoute,
+  onNavigate,
+  authUser,
+  onLogout,
+  onAccountSave,
+  entered = false
+}: ProfileSceneProps) {
   const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", "dark");
   const [profile, setProfile] = useLocalStorage<ProfileData>("quitotine:profile", initialProfile);
-  const [, setDashboardReady] = useLocalStorage<boolean>("quitotine:dashboardReady", false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const [accountPending, setAccountPending] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState({ next: "", confirm: "" });
 
-  const signedInEmail = useMemo(() => profile.email || "—", [profile.email]);
+  const signedInEmail = useMemo(() => authUser?.email || profile.email || "-", [authUser?.email, profile.email]);
+  const signedInId = useMemo(() => authUser?.id || "-", [authUser?.id]);
+
+  useEffect(() => {
+    if (!authUser) return;
+    setProfile((prev) => ({
+      ...prev,
+      email: authUser.email,
+      displayName: authUser.displayName ?? prev.displayName
+    }));
+  }, [authUser, setProfile]);
 
   useEffect(() => {
     document.body.dataset.themeMode = mode;
@@ -80,15 +101,23 @@ export default function ProfileScene({ activeRoute, onNavigate, entered = false 
     }));
   };
 
-  const handleLogout = () => {
-    setDashboardReady(false);
-    onNavigate("/");
+  const handleLogout = async () => {
+    await onLogout();
   };
 
-  const handleAccountSave = () => {
-    setIsEditingAccount(false);
-    setAccountSaved(true);
-    window.setTimeout(() => setAccountSaved(false), 5000);
+  const handleAccountSave = async () => {
+    try {
+      setAccountPending(true);
+      setAccountError("");
+      await onAccountSave(profile.displayName.trim());
+      setIsEditingAccount(false);
+      setAccountSaved(true);
+      window.setTimeout(() => setAccountSaved(false), 5000);
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "Failed to save account info.");
+    } finally {
+      setAccountPending(false);
+    }
   };
 
   const handlePasswordSave = () => {
@@ -115,6 +144,9 @@ export default function ProfileScene({ activeRoute, onNavigate, entered = false 
             <button type="button" className="ghost-button" onClick={() => setMode(mode === "dark" ? "light" : "dark")}>
               {mode === "dark" ? "Light mode" : "Dark mode"}
             </button>
+            <button type="button" className="ghost-button" onClick={handleLogout}>
+              Log out
+            </button>
           </div>
         </header>
       </div>
@@ -128,15 +160,16 @@ export default function ProfileScene({ activeRoute, onNavigate, entered = false 
               <p className="profile-section__note">Basic identity, session access, and data controls.</p>
             </div>
             <div className="dashboard-grid profile-grid profile-grid--account">
-              <div
-                className="dashboard-card profile-card profile-card--account"
-                style={{ ["--card-index" as string]: 0 }}
-              >
+              <div className="dashboard-card profile-card profile-card--account" style={{ ["--card-index" as string]: 0 }}>
                 <div className="card-header">
                   <h3>Account information</h3>
                   <span className="card-subtitle">Editable details</span>
                 </div>
                 <div className="profile-field-grid">
+                  <div className="profile-field">
+                    <label>User ID</label>
+                    <div className="profile-static">{signedInId}</div>
+                  </div>
                   <div className="profile-field">
                     <label htmlFor="profile-display-name">Display name</label>
                     <input
@@ -174,11 +207,12 @@ export default function ProfileScene({ activeRoute, onNavigate, entered = false 
                     Edit profile
                   </button>
                   {isEditingAccount ? (
-                    <button type="button" className="primary-button" onClick={handleAccountSave}>
-                      Save
+                    <button type="button" className="primary-button" onClick={handleAccountSave} disabled={accountPending}>
+                      {accountPending ? "Saving..." : "Save"}
                     </button>
                   ) : null}
                   {accountSaved ? <span className="profile-saved">Account info saved</span> : null}
+                  {accountError ? <span className="profile-saved">{accountError}</span> : null}
                 </div>
               </div>
 

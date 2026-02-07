@@ -16,7 +16,7 @@ export default function HeroScene({ id }: HeroSceneProps) {
       id={id}
       className="overflow-hidden"
       contentClassName="section-inner-wide w-[84vw]"
-      heightClassName="min-h-[110svh]"
+      heightClassName="min-h-[110vh]"
       debugLabel="hero"
       background={
         <>

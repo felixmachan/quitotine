@@ -23,19 +23,15 @@ body {
   margin: 0;
 }
 
-#root,
 html,
 body {
-  height: 100%;
+  min-height: 100%;
+  height: auto;
 }
 
 #root {
   min-height: 100vh;
-  overflow-x: hidden;
-}
-
-html {
-  overflow-x: hidden;
+  height: auto;
 }
 
 .app-background {
@@ -1139,7 +1135,8 @@ body[data-theme-mode="light"] .app-background {
 }
 
 .profile-card--security {
-  align-self: start;
+  width: 50%;
+  height: fit-content;
 }
 
 .profile-card--account:hover {
