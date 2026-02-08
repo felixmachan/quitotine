@@ -22,6 +22,7 @@ import ProgressRail from "../components/ProgressRail";
 import { AuthTokens, AuthUser, OnboardingData } from "./types";
 import { useLocalStorage } from "./useLocalStorage";
 import { useThemeStage } from "./useThemeStage";
+import { buildQuitPlan, toIsoDate, type JournalEntry } from "./quitLogic";
 
 const initialData: OnboardingData = {
   productType: "",
@@ -47,6 +48,18 @@ type ApiErrorBody = {
   message?: string;
 };
 
+type CravingLog = {
+  date: string;
+  hour: number;
+  intensity: number;
+  source: "journal" | "backend";
+  createdAt: string;
+};
+
+const MS_PER_DAY = 86_400_000;
+
+const clampInt = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(value)));
+
 export default function App() {
   const [data, setData] = useLocalStorage<OnboardingData>("quitotine:onboarding", initialData);
   const [authTokens, setAuthTokens] = useLocalStorage<AuthTokens | null>("quitotine:authTokens", null);
@@ -59,10 +72,14 @@ export default function App() {
   const { stage, setStage } = useThemeStage();
   const [route, setRoute] = useState(() => window.location.pathname);
   const [dashboardEntered, setDashboardEntered] = useState(false);
+  const [fillWithDummyData, setFillWithDummyData] = useState(false);
   const overlayMs = Number(import.meta.env.VITE_COMMIT_OVERLAY_MS);
   const overlayMsValue = Number.isFinite(overlayMs) && overlayMs > 0 ? overlayMs : undefined;
   const holdMs = Number(import.meta.env.VITE_COMMIT_HOLD_MS);
   const holdMsValue = Number.isFinite(holdMs) && holdMs > 0 ? holdMs : undefined;
+  const isTestEnvironment = String(import.meta.env.VITE_ENVIRONMENT ?? import.meta.env.environment ?? "")
+    .trim()
+    .toLowerCase() === "test";
   const sections = useMemo(
     () => [
       "hero",
@@ -298,6 +315,69 @@ export default function App() {
     await authenticate("/auth/register", registration.email, registration.password);
   };
 
+  const seedDummyInsightsData = () => {
+    const now = new Date();
+    const startDate = new Date(now.getTime() - 29 * MS_PER_DAY);
+    startDate.setHours(9, 0, 0, 0);
+
+    const dailyUnits = Number.isFinite(data.dailyAmount) ? Math.max(0, Number(data.dailyAmount)) : 0;
+    const useDays = (() => {
+      if (!data.durationValue) return 30;
+      const value = Math.max(1, Number(data.durationValue));
+      if (data.durationUnit === "weeks") return Math.round(value * 7);
+      if (data.durationUnit === "months") return Math.round(value * 30.4);
+      return Math.round(value * 365);
+    })();
+    const seededPlan = buildQuitPlan({ dailyUnits, useDays, mgPerUnit: 8 });
+    seededPlan.startDate = startDate.toISOString();
+    seededPlan.progressOffsetDays = 0;
+
+    const journalEntries: JournalEntry[] = [];
+    const cravingLogs: CravingLog[] = [];
+
+    for (let dayOffset = 0; dayOffset < 30; dayOffset += 1) {
+      const dayDate = new Date(startDate);
+      dayDate.setDate(startDate.getDate() + dayOffset);
+
+      const dayRatio = dayOffset / 29;
+      const isoDate = toIsoDate(dayDate);
+      const cravingsPerDay = clampInt(8 - dayRatio * 3 + (Math.random() * 2 - 1), 2, 10);
+      const mood = clampInt(4 + dayRatio * 3 + (Math.random() * 2 - 1), 2, 9);
+      const journalCravings = clampInt(cravingsPerDay + (Math.random() * 2 - 1), 1, 10);
+
+      const journalCreatedAt = new Date(dayDate);
+      journalCreatedAt.setHours(20, clampInt(20 + Math.random() * 25, 0, 59), 0, 0);
+
+      journalEntries.push({
+        date: isoDate,
+        mood,
+        cravings: journalCravings,
+        note: dayOffset % 6 === 0 ? "Felt easier with short breathing reset." : "",
+        createdAt: journalCreatedAt.toISOString()
+      });
+
+      for (let cravingIndex = 0; cravingIndex < cravingsPerDay; cravingIndex += 1) {
+        const hour = clampInt(7 + Math.random() * 15, 0, 23);
+        const intensity = clampInt(8 - dayRatio * 2.5 + (Math.random() * 3 - 1.5), 2, 10);
+        const occurredAt = new Date(dayDate);
+        occurredAt.setHours(hour, clampInt(Math.random() * 59, 0, 59), 0, 0);
+
+        cravingLogs.push({
+          date: isoDate,
+          hour,
+          intensity,
+          source: "backend",
+          createdAt: occurredAt.toISOString()
+        });
+      }
+    }
+
+    localStorage.setItem("quitotine:plan", JSON.stringify(seededPlan));
+    localStorage.setItem("quitotine:journal", JSON.stringify(journalEntries));
+    localStorage.setItem("quitotine:cravingLogs", JSON.stringify(cravingLogs));
+    localStorage.setItem("quitotine:relapse", JSON.stringify([]));
+  };
+
   const submitLogin = async () => {
     setLoginPending(true);
     setLoginError("");
@@ -519,7 +599,7 @@ export default function App() {
         <OnboardingProductScene
           id="onboarding-product"
           value={data.productType}
-          onChange={(value) => updateData({ productType: value })}
+          onChange={(value) => updateData({ productType: value as OnboardingData["productType"] })}
         />
         <OnboardingDurationScene
           id="onboarding-duration"
@@ -555,7 +635,13 @@ export default function App() {
           onEmail={(value) => updateRegistration({ email: value })}
           onPassword={(value) => updateRegistration({ password: value })}
         />
-        <OnboardingSummaryScene id="onboarding-summary" data={data} />
+        <OnboardingSummaryScene
+          id="onboarding-summary"
+          data={data}
+          showDummySeedOption={isTestEnvironment}
+          seedDummyData={fillWithDummyData}
+          onSeedDummyDataChange={setFillWithDummyData}
+        />
         <OnboardingReadyScene
           id="onboarding-ready"
           onCommit={submitRegistration}
@@ -563,6 +649,9 @@ export default function App() {
           overlayMs={overlayMsValue}
           holdMs={holdMsValue}
           onSuccess={() => {
+            if (isTestEnvironment && fillWithDummyData) {
+              seedDummyInsightsData();
+            }
             setStage("started");
             navigate("/dashboard", true);
           }}

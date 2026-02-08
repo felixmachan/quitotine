@@ -5,9 +5,18 @@ import { OnboardingData } from "../app/types";
 interface OnboardingSummarySceneProps {
   id: string;
   data: OnboardingData;
+  showDummySeedOption?: boolean;
+  seedDummyData?: boolean;
+  onSeedDummyDataChange?: (next: boolean) => void;
 }
 
-export default function OnboardingSummaryScene({ id, data }: OnboardingSummarySceneProps) {
+export default function OnboardingSummaryScene({
+  id,
+  data,
+  showDummySeedOption = false,
+  seedDummyData = false,
+  onSeedDummyDataChange
+}: OnboardingSummarySceneProps) {
   const dailyAmount =
     data.dailyAmount != null && data.dailyAmount !== 0 ? `${data.dailyAmount} ${data.dailyUnit}` : "-";
   const duration =
@@ -52,6 +61,17 @@ export default function OnboardingSummaryScene({ id, data }: OnboardingSummarySc
         <p className="mt-6 text-base text-white/60">
           Go to the next section to start your journey.
         </p>
+        {showDummySeedOption ? (
+          <label className="mt-6 inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-left text-sm text-white/80">
+            <input
+              type="checkbox"
+              checked={seedDummyData}
+              onChange={(event) => onSeedDummyDataChange?.(event.target.checked)}
+              className="h-4 w-4 accent-aurora"
+            />
+            Fill with dummy data (start from day 30 for testing insights)
+          </label>
+        ) : null}
       </div>
     </StickySection>
   );

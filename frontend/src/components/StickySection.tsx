@@ -15,7 +15,7 @@ interface StickySectionProps {
   contentClassName?: string;
   heightClassName?: string;
   debugLabel?: string;
-  sectionRef?: RefObject<HTMLElement | null>;
+  sectionRef?: RefObject<HTMLElement>;
   background?: ReactNode;
   overlay?: ReactNode;
   sticky?: boolean;
@@ -36,7 +36,7 @@ export default function StickySection({
   sticky = true,
   onProgressChange
 }: StickySectionProps) {
-  const localRef = useRef<HTMLElement | null>(null);
+  const localRef = useRef<HTMLElement>(null);
   const ref = sectionRef ?? localRef;
   const { scrollYProgress } = useScroll({
     target: ref,

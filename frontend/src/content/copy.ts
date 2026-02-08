@@ -11,10 +11,12 @@
     duration: "How long have you been using?",
     amount: "Average daily amount",
     goal: "Your goal",
-    name: "Your name"
+    name: "Your name",
+    startDate: "Your start date"
   },
   summaryTitle: "Your starting point",
   summaryButton: "Continue",
+  skip: "Skip",
 };
 
 export const productOptions = [

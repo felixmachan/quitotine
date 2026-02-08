@@ -59,7 +59,7 @@ const insights = personalization.insights ?? {};
 const reflections = personalization.reflections ?? {};
 const carrSteps = (personalization.carrSteps ?? []) as CarrStep[];
 const carrLenses = (personalization.carrLenses ?? []) as CarrLens[];
-const spikeReframes = personalization.spikeReframes ?? {};
+const spikeReframes = (personalization.spikeReframes ?? {}) as Record<string, string>;
 const freedomStates = (personalization.freedomStates ?? {}) as Record<string, FreedomState>;
 const unlocks = (personalization.unlocks ?? []) as UnlockItem[];
 

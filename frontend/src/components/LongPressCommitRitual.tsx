@@ -107,7 +107,7 @@ export default function LongPressCommitRitual({
     pressRafRef.current = requestAnimationFrame(tickPress);
   };
 
-  const handleStart = (event?: { clientX?: number; clientY?: number }) => {
+  const handleStart = () => {
     if (disabled || phase === "overlayLoading") return;
     setPhase("pressing");
     setProgress(0);
@@ -265,7 +265,7 @@ export default function LongPressCommitRitual({
       type="button"
       className="commitment-button"
       disabled={disabled}
-      onPointerDown={(event) => handleStart(event)}
+      onPointerDown={handleStart}
       onPointerUp={handleCancel}
       onPointerLeave={handleCancel}
       onPointerCancel={handleCancel}

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from math import exp
 from typing import Iterable
 
@@ -6,6 +6,16 @@ from app.models.models import Event, Program
 
 
 def _days_between(start: datetime, end: datetime) -> int:
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    else:
+        start = start.astimezone(timezone.utc)
+
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    else:
+        end = end.astimezone(timezone.utc)
+
     delta = end - start
     return max(int(delta.total_seconds() // 86400), 0)
 
