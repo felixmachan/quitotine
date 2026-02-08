@@ -51,6 +51,18 @@ type ApiErrorBody = {
   message?: string;
 };
 
+type ProgramCreatePayload = {
+  goal_type: "reduce_to_zero" | "immediate_zero";
+  started_at: string;
+  product_profile: {
+    product_type: "cigarette" | "snus" | "vape" | "chew" | "other";
+    baseline_amount: number;
+    unit_label: string;
+    strength_mg: number;
+    cost_per_unit: number | null;
+  };
+};
+
 const LEGACY_DAILY_UNITS = new Set(["cigarette", "snus", "puff", "ml", "portion", "grams", "unit"]);
 
 export default function App() {
@@ -253,6 +265,57 @@ export default function App() {
     return detail.replace(/\s+/g, " ").trim();
   };
 
+  const buildProgramCreatePayload = (): ProgramCreatePayload => {
+    const productType = data.productType || "other";
+    const goalType = data.goalType || "reduce_to_zero";
+    const baselineAmount = Number.isFinite(data.dailyAmount) ? Math.max(1, Number(data.dailyAmount)) : 1;
+    const unitLabel = data.dailyUnit === "box" ? "box" : "pieces";
+    const strengthMg = Number.isFinite(data.strengthAmount) ? Math.max(0.1, Number(data.strengthAmount)) : 8;
+    const normalizedBoxPrice = Number.isFinite(data.unitPrice) ? Math.max(0, Number(data.unitPrice)) : 0;
+    const normalizedPiecesPerBox = Number.isFinite(data.piecesPerBox) ? Math.max(0, Number(data.piecesPerBox)) : 0;
+    const costPerUnit =
+      normalizedBoxPrice <= 0
+        ? null
+        : unitLabel === "pieces" && normalizedPiecesPerBox > 0
+          ? normalizedBoxPrice / normalizedPiecesPerBox
+          : normalizedBoxPrice;
+
+    return {
+      goal_type: goalType,
+      started_at: new Date().toISOString(),
+      product_profile: {
+        product_type: productType,
+        baseline_amount: baselineAmount,
+        unit_label: unitLabel,
+        strength_mg: strengthMg,
+        cost_per_unit: costPerUnit
+      }
+    };
+  };
+
+  const ensureActiveProgram = async (accessToken: string) => {
+    const activeResponse = await fetch(`${API_BASE}/programs/active`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (activeResponse.ok) return;
+    if (activeResponse.status !== 404) {
+      throw new Error(`Could not load active program${await parseError(activeResponse)}.`);
+    }
+
+    const createResponse = await fetch(`${API_BASE}/programs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`
+      },
+      body: JSON.stringify(buildProgramCreatePayload())
+    });
+
+    if (!createResponse.ok) {
+      throw new Error(`Could not create active program${await parseError(createResponse)}.`);
+    }
+  };
+
   const fetchMe = async (accessToken: string) => {
     const response = await fetch(`${API_BASE}/profile`, {
       headers: { Authorization: `Bearer ${accessToken}` }
@@ -323,6 +386,7 @@ export default function App() {
       refreshToken: tokensRaw.refresh_token
     };
     setAuthTokens(tokens);
+    await ensureActiveProgram(tokens.accessToken);
     await fetchMe(tokens.accessToken);
     return tokens;
   };

@@ -36,7 +36,16 @@ interface TestSeedDayResponse {
   craving_count: number;
   cravings: TestSeedCravingResponse[];
 }
+
+type ApiErrorBody = {
+  detail?: string | { msg?: string } | Array<{ msg?: string }>;
+  error?: string;
+  message?: string;
+};
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const ENABLE_TEST_TOOLS = String(import.meta.env.VITE_ENABLE_TEST_TOOLS ?? "")
+  .trim()
+  .toLowerCase() === "true";
 
 const initialProfile: ProfileData = {
   displayName: "",
@@ -153,6 +162,7 @@ export default function ProfileScene({
     .trim()
     .toLowerCase()
     .match(/^(test|development)$/) !== null;
+  const showTestTools = ENABLE_TEST_TOOLS && isTestOrDevelopmentEnvironment;
 
   const signedInEmail = useMemo(() => authUser?.email || profile.email || "-", [authUser?.email, profile.email]);
   const signedInId = useMemo(() => authUser?.id || "-", [authUser?.id]);
@@ -300,6 +310,29 @@ export default function ProfileScene({
     setNicotineError("");
   };
 
+  const parseError = async (response: Response) => {
+    let detail = "";
+    try {
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        const payload = (await response.json()) as ApiErrorBody;
+        if (typeof payload?.detail === "string") detail = payload.detail;
+        else if (payload?.detail && !Array.isArray(payload.detail) && typeof payload.detail.msg === "string") {
+          detail = payload.detail.msg;
+        } else if (Array.isArray(payload?.detail)) {
+          const first = payload.detail.find((item) => typeof item?.msg === "string");
+          detail = first?.msg ?? "";
+        } else if (typeof payload?.error === "string") detail = payload.error;
+        else if (typeof payload?.message === "string") detail = payload.message;
+      } else {
+        detail = (await response.text()).trim();
+      }
+    } catch {
+      detail = "";
+    }
+    return detail.replace(/\s+/g, " ").trim();
+  };
+
   const handleNicotineSave = async () => {
     try {
       setNicotinePending(true);
@@ -354,6 +387,19 @@ export default function ProfileScene({
     }
 
     if (!response.ok) {
+      if (response.status === 404) {
+        const detail = await parseError(response);
+        if (/no active program/i.test(detail)) {
+          setTestActionMessage("Seed failed: no active program. Complete onboarding or create an active program first.");
+          return;
+        }
+        setTestActionMessage("Seed endpoint not found on backend (404). Deploy latest backend, or disable test tools on frontend.");
+        return;
+      }
+      if (response.status === 403) {
+        setTestActionMessage("Seed endpoint is disabled in this backend environment (403). Use test/development backend.");
+        return;
+      }
       setTestActionMessage(`Seed failed (HTTP ${response.status}). Check environment and active program.`);
       return;
     }
@@ -402,6 +448,19 @@ export default function ProfileScene({
     }
 
     if (!response.ok) {
+      if (response.status === 404) {
+        const detail = await parseError(response);
+        if (/no active program/i.test(detail)) {
+          setTestActionMessage("Reset failed: no active program. Complete onboarding or create an active program first.");
+          return;
+        }
+        setTestActionMessage("Reset endpoint not found on backend (404). Deploy latest backend, or disable test tools on frontend.");
+        return;
+      }
+      if (response.status === 403) {
+        setTestActionMessage("Reset endpoint is disabled in this backend environment (403). Use test/development backend.");
+        return;
+      }
       setTestActionMessage(`Reset failed (HTTP ${response.status}). Check environment and active program.`);
       return;
     }
@@ -827,7 +886,7 @@ export default function ProfileScene({
             </div>
           </section>
 
-          {isTestOrDevelopmentEnvironment ? (
+          {showTestTools ? (
             <section className="profile-section" aria-labelledby="test-tools-title">
               <div className="profile-section__header">
                 <p className="profile-section__kicker">Testing</p>
