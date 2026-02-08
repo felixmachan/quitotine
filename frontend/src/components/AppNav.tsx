@@ -1,3 +1,5 @@
+import "./AppNav.css";
+
 interface AppNavProps {
   active: string;
   onNavigate: (route: string) => void;

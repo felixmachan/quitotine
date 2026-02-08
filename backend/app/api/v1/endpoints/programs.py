@@ -1,13 +1,11 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.program import Program
-from app.models.product_profile import ProductProfile
+from app.models.models import ProductProfile, Program, User
 from app.schemas.program import ProgramCreate, ProgramOut
 from app.security.dependencies import get_current_user
-from app.models.user import User
 
 router = APIRouter()
 
@@ -69,3 +67,4 @@ def list_programs(
     current_user: User = Depends(get_current_user),
 ):
     return db.query(Program).filter(Program.user_id == current_user.id).order_by(Program.started_at.desc()).all()
+

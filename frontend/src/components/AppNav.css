@@ -1,0 +1,49 @@
+.app-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.app-nav__item {
+  border-radius: 999px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.app-nav__item--active {
+  border-color: rgba(120, 240, 220, 0.6);
+  box-shadow: 0 0 0 1px rgba(120, 240, 220, 0.3);
+  background: rgba(120, 240, 220, 0.16);
+}
+
+.app-nav__item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(120, 240, 220, 0.35);
+  box-shadow: 0 10px 24px rgba(4, 12, 18, 0.35);
+}
+
+.app-nav__item:focus-visible {
+  outline: 2px solid #8de7f6;
+  outline-offset: 2px;
+}
+
+.dashboard-shell[data-theme-mode="light"] .app-nav__item {
+  color: rgba(12, 24, 30, 0.8);
+  background: rgba(12, 24, 30, 0.05);
+  border-color: rgba(12, 24, 30, 0.14);
+}
+
+.dashboard-shell[data-theme-mode="dark"] .app-nav__item {
+  background: rgba(0, 0, 0, 0.26);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.dashboard-shell[data-theme-mode="light"] .app-nav__item--active {
+  color: rgba(12, 24, 30, 0.95);
+}

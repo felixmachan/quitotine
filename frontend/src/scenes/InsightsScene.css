@@ -1,0 +1,610 @@
+.ifthen-list p {
+  margin: 0;
+}
+
+.ifthen-list {
+  display: grid;
+  gap: 8px;
+}
+
+.future-form {
+  display: grid;
+  gap: 8px;
+}
+
+.future-form label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.future-form textarea,
+.future-form input {
+  width: 100%;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: inherit;
+}
+
+.future-form input {
+  max-width: 120px;
+}
+
+.future-note {
+  margin: 0;
+  color: rgba(220, 248, 248, 0.6);
+  font-size: 0.82rem;
+}
+
+.deepdive-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.metrics-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(200px, 1fr));
+  align-items: stretch;
+}
+
+.metric {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 240, 220, 0.12);
+  background: rgba(10, 24, 32, 0.6);
+  min-width: 0;
+}
+
+.metrics-card {
+  grid-column: 1 / -1;
+}
+
+.metrics-card .card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metrics-card .card-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+@media (max-width: 1100px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metric span {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(220, 248, 248, 0.55);
+}
+
+.metric strong {
+  font-size: 1.35rem;
+}
+
+.metric-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metric-change-arrow {
+  transform: scale(1.6);
+  line-height: 1;
+  color: inherit;
+}
+
+.metric-change--up {
+  color: rgba(255, 160, 160, 0.96);
+}
+
+.metric-change--down {
+  color: rgba(120, 240, 200, 0.96);
+}
+
+.metric-change--neutral {
+  color: rgba(210, 230, 240, 0.9);
+}
+
+.metric em {
+  font-style: normal;
+  font-size: 0.8rem;
+  color: rgba(220, 248, 248, 0.6);
+}
+
+.chart-shell {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 5px;
+}
+
+.chart-card .card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chart-card .card-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.chart-view-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: rgba(220, 248, 248, 0.78);
+}
+
+.chart-view-control select {
+  border-radius: 999px;
+  border: 1px solid rgba(120, 240, 220, 0.24);
+  background: rgba(10, 24, 32, 0.6);
+  color: inherit;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.chart-line {
+  width: 100%;
+  height: 340px;
+}
+
+.chart-line--full {
+  overflow: visible;
+}
+
+.chart-grid {
+  stroke: rgba(190, 230, 228, 0.22);
+  stroke-width: 1;
+}
+
+.chart-tick {
+  fill: rgba(210, 240, 240, 0.72);
+  font-size: 10px;
+}
+
+.chart-axis-title {
+  fill: rgba(220, 248, 248, 0.78);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-area {
+  fill: rgba(120, 240, 220, 0.18);
+}
+
+.chart-area--mood {
+  fill: rgba(141, 231, 246, 0.16);
+}
+
+.chart-area--intensity {
+  fill: rgba(255, 184, 120, 0.16);
+}
+
+.chart-area--animate {
+  opacity: 0;
+  animation: chartAreaFade 0.8s ease 0.18s forwards;
+}
+
+.chart-polyline {
+  stroke: rgba(120, 240, 220, 0.92);
+  stroke-width: 2.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-polyline--mood {
+  stroke: rgba(96, 214, 240, 0.95);
+}
+
+.chart-polyline--intensity {
+  stroke: rgba(255, 184, 120, 0.95);
+}
+
+.chart-polyline--animate {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chartLineDraw 1s ease-out 0.05s forwards;
+}
+
+.chart-point {
+  fill: rgba(120, 240, 220, 1);
+  stroke: rgba(9, 24, 30, 0.45);
+  stroke-width: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chartPointIn 0.28s ease forwards;
+}
+
+.chart-point--mood {
+  fill: rgba(96, 214, 240, 0.98);
+}
+
+.chart-point--intensity {
+  fill: rgba(255, 184, 120, 0.98);
+}
+
+.intensity-trend-card {
+  grid-column: 1 / -1;
+}
+
+.chart-guide-line {
+  stroke: rgba(200, 240, 236, 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart-tooltip-box {
+  fill: rgba(9, 24, 30, 0.92);
+  stroke: rgba(120, 240, 220, 0.35);
+  stroke-width: 1;
+}
+
+.chart-tooltip-text {
+  fill: rgba(236, 255, 252, 0.92);
+  font-size: 10px;
+}
+
+.chart-tooltip-text--strong {
+  font-weight: 700;
+}
+
+@keyframes chartLineDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chartAreaFade {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes chartPointIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.chart-axis {
+  font-size: 0.75rem;
+  color: rgba(220, 248, 248, 0.6);
+}
+
+.chart-placeholder {
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px dashed rgba(120, 240, 220, 0.2);
+  color: rgba(220, 248, 248, 0.65);
+  font-size: 0.85rem;
+}
+
+.time-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.heatmap-card {
+  grid-column: 1 / -1;
+}
+
+.heatmap-shell {
+  display: grid;
+  grid-template-columns: 120px repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+}
+
+.heatmap-corner {
+  min-height: 34px;
+}
+
+.heatmap-col-head {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: rgba(220, 248, 248, 0.7);
+  text-align: center;
+  align-self: end;
+}
+
+.heatmap-row-head {
+  display: flex;
+  align-items: center;
+  font-size: 0.82rem;
+  color: rgba(220, 248, 248, 0.82);
+}
+
+.heatmap-cell {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 240, 220, 0.14);
+  background: color-mix(in srgb, #ffffff 100%, rgba(120, 240, 220, 0) 0%);
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  color: rgba(12, 24, 30, 0.76);
+  font-variant-numeric: tabular-nums;
+  background-color: color-mix(in srgb, #ffffff calc((1 - var(--heat, 0)) * 100%), rgba(70, 200, 190, 0.95));
+}
+
+.time-grid--below {
+  margin-top: 14px;
+  max-width: 520px;
+}
+
+.time-bar {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 240, 220, 0.12);
+  background: rgba(10, 24, 32, 0.6);
+  position: relative;
+  overflow: hidden;
+}
+
+.time-bar::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: calc(var(--bar, 0) * 100%);
+  background: rgba(120, 240, 220, 0.22);
+}
+
+.time-bar span,
+.time-bar strong {
+  position: relative;
+  z-index: 1;
+}
+
+.interpretation-line {
+  margin: 0;
+  color: rgba(220, 248, 248, 0.8);
+}
+
+.insights-disclosure {
+  border-radius: 16px;
+  border: 1px solid rgba(120, 240, 220, 0.12);
+  padding: 10px 12px;
+  background: rgba(10, 24, 32, 0.6);
+}
+
+.insights-disclosure summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+.insights-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.insights-disclosure__body {
+  margin-top: 12px;
+  display: grid;
+  gap: 16px;
+}
+
+.deepdive-block {
+  display: grid;
+  gap: 8px;
+}
+
+.deepdive-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(220, 248, 248, 0.55);
+}
+
+.deepdive-textarea {
+  width: 100%;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+}
+
+.dashboard-shell[data-theme-mode="light"] .metric span,
+.dashboard-shell[data-theme-mode="light"] .deepdive-label {
+  color: rgba(12, 24, 30, 0.55);
+}
+
+.dashboard-shell[data-theme-mode="light"] .future-form label {
+  color: rgba(12, 24, 30, 0.55);
+}
+
+.dashboard-shell[data-theme-mode="light"] .future-form textarea::placeholder,
+.dashboard-shell[data-theme-mode="light"] .future-form input::placeholder {
+  color: rgba(12, 24, 30, 0.45);
+}
+
+.dashboard-shell[data-theme-mode="light"] .future-form textarea,
+.dashboard-shell[data-theme-mode="light"] .future-form input {
+  background: rgba(250, 255, 255, 0.92);
+  border-color: rgba(8, 40, 48, 0.16);
+  color: #0c1a20;
+  box-shadow: 0 18px 40px rgba(10, 20, 24, 0.18);
+}
+
+.dashboard-shell[data-theme-mode="light"] .metric-change--up {
+  color: rgba(196, 48, 64, 0.95);
+}
+
+.dashboard-shell[data-theme-mode="light"] .metric-change--down {
+  color: rgba(24, 140, 94, 0.96);
+}
+
+.dashboard-shell[data-theme-mode="light"] .metric-change--neutral {
+  color: rgba(42, 74, 88, 0.86);
+}
+
+.dashboard-shell[data-theme-mode="light"] .interpretation-line,
+.dashboard-shell[data-theme-mode="light"] .metric em {
+  color: rgba(12, 24, 30, 0.75);
+}
+
+.dashboard-shell[data-theme-mode="light"] .metric,
+.dashboard-shell[data-theme-mode="light"] .chart-placeholder,
+.dashboard-shell[data-theme-mode="light"] .time-bar,
+.dashboard-shell[data-theme-mode="light"] .deepdive-textarea,
+.dashboard-shell[data-theme-mode="light"] .insights-disclosure {
+  background: rgba(250, 255, 255, 0.92);
+  border-color: rgba(8, 40, 48, 0.12);
+  color: rgba(12, 24, 30, 0.85);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-grid {
+  stroke: rgba(8, 40, 48, 0.14);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-tick {
+  fill: rgba(12, 24, 30, 0.62);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-axis-title {
+  fill: rgba(12, 24, 30, 0.8);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-view-control {
+  color: rgba(12, 24, 30, 0.7);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-view-control select {
+  background: rgba(250, 255, 255, 0.96);
+  border-color: rgba(8, 40, 48, 0.2);
+  color: rgba(12, 24, 30, 0.84);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-area {
+  fill: rgba(70, 200, 190, 0.16);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-area--mood {
+  fill: rgba(80, 192, 226, 0.14);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-area--intensity {
+  fill: rgba(248, 162, 86, 0.16);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-polyline {
+  stroke: rgba(70, 200, 190, 0.95);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-polyline--mood {
+  stroke: rgba(56, 170, 206, 0.92);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-polyline--intensity {
+  stroke: rgba(232, 132, 58, 0.94);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-point {
+  fill: rgba(70, 200, 190, 0.98);
+  stroke: rgba(12, 24, 30, 0.22);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-point--mood {
+  fill: rgba(56, 170, 206, 0.95);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-point--intensity {
+  fill: rgba(232, 132, 58, 0.95);
+}
+
+.dashboard-shell[data-theme-mode="light"] .heatmap-col-head {
+  color: rgba(12, 24, 30, 0.65);
+}
+
+.dashboard-shell[data-theme-mode="light"] .heatmap-row-head {
+  color: rgba(12, 24, 30, 0.82);
+}
+
+.dashboard-shell[data-theme-mode="light"] .heatmap-cell {
+  border-color: rgba(8, 40, 48, 0.12);
+  color: rgba(12, 24, 30, 0.8);
+  background-color: color-mix(in srgb, #ffffff calc((1 - var(--heat, 0)) * 100%), rgba(70, 200, 190, 0.96));
+}
+
+.dashboard-shell[data-theme-mode="dark"] .heatmap-col-head {
+  color: rgba(214, 235, 244, 0.72);
+}
+
+.dashboard-shell[data-theme-mode="dark"] .heatmap-row-head {
+  color: rgba(228, 247, 255, 0.86);
+}
+
+.dashboard-shell[data-theme-mode="dark"] .heatmap-cell {
+  border-color: rgba(141, 231, 246, 0.2);
+  color: rgba(230, 247, 255, 0.92);
+  background-color: color-mix(in srgb, rgba(9, 24, 30, 1) calc((1 - var(--heat, 0)) * 100%), rgba(141, 231, 246, 0.95));
+}
+
+@media (max-width: 1000px) {
+  .heatmap-shell {
+    grid-template-columns: 84px repeat(6, minmax(0, 1fr));
+  }
+
+  .heatmap-col-head,
+  .heatmap-row-head,
+  .heatmap-cell {
+    font-size: 0.7rem;
+  }
+
+  .heatmap-cell {
+    min-height: 34px;
+  }
+}
+
+
+.dashboard-shell[data-theme-mode="light"] .chart-guide-line {
+  stroke: rgba(12, 24, 30, 0.2);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-tooltip-box {
+  fill: rgba(250, 255, 255, 0.96);
+  stroke: rgba(8, 40, 48, 0.22);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-tooltip-text {
+  fill: rgba(12, 24, 30, 0.9);
+}
+
+.dashboard-shell[data-theme-mode="light"] .time-bar::after {
+  background: rgba(70, 200, 190, 0.2);
+}

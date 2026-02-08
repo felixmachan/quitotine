@@ -1,0 +1,46 @@
+.insights-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+}
+
+.insight-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.insight-bar span {
+  width: 100%;
+  border-radius: 8px 8px 4px 4px;
+  background: rgba(120, 240, 220, 0.6);
+  display: block;
+}
+
+.insight-bar em {
+  font-style: normal;
+  font-size: 0.75rem;
+  color: rgba(220, 248, 248, 0.6);
+}
+
+.insights-footnote {
+  font-size: 0.85rem;
+  color: rgba(220, 248, 248, 0.6);
+}
+
+.dashboard-shell[data-theme-mode="light"] .insight-bar em {
+  color: rgba(12, 24, 30, 0.75);
+}
+
+.dashboard-shell[data-theme-mode="light"] .insight-bar span {
+  background: rgba(70, 200, 190, 0.5);
+}
+
+.dashboard-shell[data-theme-mode="light"] .insights-footnote {
+  color: rgba(12, 24, 30, 0.6);
+}

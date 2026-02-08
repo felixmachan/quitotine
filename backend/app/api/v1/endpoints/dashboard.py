@@ -1,13 +1,11 @@
-﻿from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.program import Program
-from app.models.event import Event
+from app.models.models import Event, Program, User
 from app.schemas.progress import DashboardOut
 from app.security.dependencies import get_current_user
-from app.models.user import User
 from app.services.progress import calculate_progress, select_message_of_the_day
 
 router = APIRouter()
@@ -69,3 +67,4 @@ def get_dashboard(
         relapses_last_30_days=len(relapse_events),
         message_of_the_day=message,
     )
+

@@ -11,6 +11,7 @@ import {
 } from "../app/personalization";
 import { AI_CAPABILITIES, supportsAiInterpretation } from "../app/ai";
 import AppNav from "../components/AppNav";
+import "./InsightsScene.css";
 
 interface InsightsSceneProps {
   data: OnboardingData;
@@ -20,7 +21,7 @@ interface InsightsSceneProps {
 }
 
 type ThemeMode = "dark" | "light";
-type ChartView = "1d" | "1w" | "1m" | "all";
+type ChartView = "1w" | "1m" | "all";
 
 interface CarrInsight {
   id: string;
@@ -73,10 +74,16 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const [lensNote, setLensNote] = useState("");
   const [importError, setImportError] = useState("");
   const importRunRef = useRef(0);
-  const [chartAnimKey, setChartAnimKey] = useState(0);
-  const [chartView, setChartView] = useState<ChartView>("1m");
+  const [cravingsChartAnimKey, setCravingsChartAnimKey] = useState(0);
+  const [moodChartAnimKey, setMoodChartAnimKey] = useState(0);
+  const [intensityChartAnimKey, setIntensityChartAnimKey] = useState(0);
+  const [trendView, setTrendView] = useState<ChartView>("1m");
+  const [cravingsChartView, setCravingsChartView] = useState<ChartView>("1m");
+  const [moodChartView, setMoodChartView] = useState<ChartView>("1m");
+  const [intensityChartView, setIntensityChartView] = useState<ChartView>("1m");
   const [hoverCravingIndex, setHoverCravingIndex] = useState<number | null>(null);
   const [hoverMoodIndex, setHoverMoodIndex] = useState<number | null>(null);
+  const [hoverIntensityIndex, setHoverIntensityIndex] = useState<number | null>(null);
 
   const dailyUnits = Number.isFinite(data.dailyAmount) ? Math.max(0, Number(data.dailyAmount)) : 0;
   const useDays = useMemo(() => {
@@ -115,10 +122,17 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const reframeStep = useMemo(() => getCarrStep(dayIndex, journalEntries), [dayIndex, journalEntries]);
 
   const entryByDate = useMemo(() => new Map(journalEntries.map((entry) => [entry.date, entry])), [journalEntries]);
+  const cravingCountByDate = useMemo(() => {
+    const counts = new Map<string, number>();
+    cravingLogs.forEach((log) => {
+      counts.set(log.date, (counts.get(log.date) ?? 0) + 1);
+    });
+    return counts;
+  }, [cravingLogs]);
   const recentSeries = useMemo(() => {
     const days: { date: string; cravings: number; mood: number }[] = [];
     const today = new Date();
-    const sortedDates = journalEntries.map((entry) => entry.date).sort();
+    const sortedDates = [...journalEntries.map((entry) => entry.date), ...cravingLogs.map((log) => log.date)].sort();
     const firstDataDate = sortedDates.length ? new Date(`${sortedDates[0]}T00:00:00`) : null;
     const fallbackStart = new Date();
     fallbackStart.setDate(fallbackStart.getDate() - 13);
@@ -129,19 +143,48 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     while (cursor <= today) {
       const key = toIsoDate(cursor);
       const entry = entryByDate.get(key);
-      days.push({ date: key, cravings: entry?.cravings ?? 0, mood: entry?.mood ?? 0 });
+      days.push({ date: key, cravings: cravingCountByDate.get(key) ?? 0, mood: entry?.mood ?? 0 });
       cursor.setDate(cursor.getDate() + 1);
     }
     return days;
-  }, [entryByDate, journalEntries]);
+  }, [cravingCountByDate, cravingLogs, entryByDate, journalEntries]);
 
   const average = (values: number[]) => {
     if (!values.length) return 0;
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   };
 
-  const currentWeek = useMemo(() => recentSeries.slice(-7), [recentSeries]);
-  const priorWeek = useMemo(() => recentSeries.slice(0, 7), [recentSeries]);
+  const getStartKeyForView = (view: ChartView) => {
+    if (view === "all") return null;
+    const daysBack = view === "1w" ? 7 : 30;
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - (daysBack - 1));
+    return toIsoDate(start);
+  };
+
+  const filterSeriesByView = <T extends { date: string }>(series: T[], view: ChartView) => {
+    const startKey = getStartKeyForView(view);
+    if (!startKey) return series;
+    return series.filter((item) => item.date >= startKey);
+  };
+
+  const trendSeries = useMemo(() => filterSeriesByView(recentSeries, trendView), [recentSeries, trendView]);
+  const cravingsFilteredSeries = useMemo(
+    () => filterSeriesByView(recentSeries, cravingsChartView),
+    [cravingsChartView, recentSeries]
+  );
+  const moodFilteredSeries = useMemo(() => filterSeriesByView(recentSeries, moodChartView), [moodChartView, recentSeries]);
+
+  const trendDaysBack = trendView === "all" ? null : trendView === "1w" ? 7 : 30;
+  const priorTrendSeries = useMemo(() => {
+    if (!trendDaysBack || !trendSeries.length) return [];
+    const startDate = trendSeries[0].date;
+    const startIndex = recentSeries.findIndex((item) => item.date === startDate);
+    if (startIndex < trendDaysBack) return [];
+    return recentSeries.slice(startIndex - trendDaysBack, startIndex);
+  }, [recentSeries, trendDaysBack, trendSeries]);
+
   const rollingSeven = useMemo(() => {
     if (journalEntries.length < 7 || recentSeries.length < 7) return [];
     const points: number[] = [];
@@ -151,27 +194,42 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     }
     return points;
   }, [journalEntries.length, recentSeries]);
-  const avgCravings = useMemo(() => average(currentWeek.map((day) => day.cravings)), [currentWeek]);
-  const baselineCravings = useMemo(() => average(priorWeek.map((day) => day.cravings)), [priorWeek]);
-  const avgCravingsLabel = journalEntries.length ? avgCravings.toFixed(1) : "--";
-  const changeVsBaseline = baselineCravings ? ((avgCravings - baselineCravings) / baselineCravings) * 100 : 0;
+  const avgCravings = useMemo(() => average(trendSeries.map((day) => day.cravings)), [trendSeries]);
+  const baselineCravings = useMemo(() => average(priorTrendSeries.map((day) => day.cravings)), [priorTrendSeries]);
+  const avgCravingsLabel = trendSeries.length ? avgCravings.toFixed(1) : "--";
+  const canCompareBaseline = trendView !== "all" && priorTrendSeries.length > 0 && baselineCravings > 0;
+  const changeVsBaseline = canCompareBaseline ? ((avgCravings - baselineCravings) / baselineCravings) * 100 : 0;
+
+  const baselineChangeTone =
+    !canCompareBaseline || Math.abs(changeVsBaseline) < 0.001
+      ? "neutral"
+      : changeVsBaseline > 0
+        ? "up"
+        : "down";
+  const baselineArrow = baselineChangeTone === "up" ? "↗" : baselineChangeTone === "down" ? "↘" : "→";
+  const baselineLabel = !canCompareBaseline
+    ? trendView === "all"
+      ? "Baseline comparison unavailable for all time view"
+      : "Need a prior period to compare"
+    : trendView === "1w"
+      ? "Last 7 vs prior 7 days"
+      : "Last 30 vs prior 30 days";
 
   const downwardDays = useMemo(() => {
-    if (currentWeek.length < 2) return 0;
+    if (trendSeries.length < 2) return 0;
     let count = 0;
-    for (let i = 1; i < currentWeek.length; i += 1) {
-      if (currentWeek[i].cravings < currentWeek[i - 1].cravings) count += 1;
+    for (let i = 1; i < trendSeries.length; i += 1) {
+      if (trendSeries[i].cravings < trendSeries[i - 1].cravings) count += 1;
     }
     return count;
-  }, [currentWeek]);
+  }, [trendSeries]);
 
   const chartUnlock = Math.max(0, 7 - journalEntries.length);
-  const baselineUnlock = Math.max(0, 14 - journalEntries.length);
-  const durationUnlock = Math.max(0, 7 - journalEntries.length);
-  const durationReady = journalEntries.length >= 7;
+  const baselineUnlock =
+    trendView === "all" || !trendDaysBack ? 0 : Math.max(0, trendDaysBack * 2 - recentSeries.length);
 
-  const buildTrendGeometry = (values: number[], dates: string[]) => {
-    const width = 760;
+  const buildTrendGeometry = (values: number[], dates: string[], chartWidth = 760) => {
+    const width = chartWidth;
     const height = 360;
     const left = 44;
     const right = 8;
@@ -202,29 +260,76 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     return { width, height, left, right, innerWidth, innerHeight, top, bottom, linePoints, areaPoints, ticks, xLabels, toX, toY };
   };
 
-  const filteredSeries = useMemo(() => {
-    if (chartView === "all") return recentSeries;
-    const daysBack = chartView === "1d" ? 1 : chartView === "1w" ? 7 : 30;
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - (daysBack - 1));
-    const startKey = toIsoDate(start);
-    return recentSeries.filter((item) => item.date >= startKey);
-  }, [chartView, recentSeries]);
+  const effectiveCravingLogs = useMemo(() => {
+    return cravingLogs;
+  }, [cravingLogs]);
 
-  const filteredCravingsSeries = filteredSeries.map((day) => day.cravings);
-  const filteredMoodSeries = filteredSeries.map((day) => day.mood);
+  const cravingIntensitySeries = useMemo(() => {
+    const today = new Date();
+    const fallbackStart = new Date();
+    fallbackStart.setDate(fallbackStart.getDate() - 13);
+    const sortedDates = effectiveCravingLogs.map((log) => log.date).sort();
+    const firstDataDate = sortedDates.length ? new Date(`${sortedDates[0]}T00:00:00`) : null;
+    const startDate = firstDataDate && firstDataDate < today ? firstDataDate : fallbackStart;
+    startDate.setHours(0, 0, 0, 0);
+
+    const avgByDate = new Map<string, { sum: number; count: number }>();
+    effectiveCravingLogs.forEach((log) => {
+      const existing = avgByDate.get(log.date) ?? { sum: 0, count: 0 };
+      existing.sum += log.intensity;
+      existing.count += 1;
+      avgByDate.set(log.date, existing);
+    });
+
+    const days: { date: string; intensity: number }[] = [];
+    const cursor = new Date(startDate);
+    while (cursor <= today) {
+      const key = toIsoDate(cursor);
+      const aggregate = avgByDate.get(key);
+      days.push({ date: key, intensity: aggregate ? aggregate.sum / aggregate.count : 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return days;
+  }, [effectiveCravingLogs]);
+
+  const intensityFilteredSeries = useMemo(
+    () => filterSeriesByView(cravingIntensitySeries, intensityChartView),
+    [cravingIntensitySeries, intensityChartView]
+  );
+  const filteredIntensityValues = intensityFilteredSeries.map((day) => day.intensity);
+
+  const filteredCravingsSeries = cravingsFilteredSeries.map((day) => day.cravings);
+  const filteredMoodSeries = moodFilteredSeries.map((day) => day.mood);
 
   useEffect(() => {
-    if (!chartUnlock) {
-      setChartAnimKey((prev) => prev + 1);
+    if (!chartUnlock && filteredCravingsSeries.length >= 2) {
+      setCravingsChartAnimKey((prev) => prev + 1);
     }
-  }, [chartUnlock, filteredCravingsSeries.join("|"), filteredMoodSeries.join("|"), chartView]);
+  }, [chartUnlock, cravingsChartView, filteredCravingsSeries.join("|")]);
+
+  useEffect(() => {
+    if (!chartUnlock && filteredMoodSeries.length >= 2) {
+      setMoodChartAnimKey((prev) => prev + 1);
+    }
+  }, [chartUnlock, filteredMoodSeries.join("|"), moodChartView]);
+
+  useEffect(() => {
+    if (effectiveCravingLogs.length && filteredIntensityValues.length >= 2) {
+      setIntensityChartAnimKey((prev) => prev + 1);
+    }
+  }, [effectiveCravingLogs.length, filteredIntensityValues.join("|"), intensityChartView]);
 
   useEffect(() => {
     setHoverCravingIndex(null);
+  }, [cravingsChartView, cravingsFilteredSeries.length]);
+
+  useEffect(() => {
     setHoverMoodIndex(null);
-  }, [chartView, filteredSeries.length]);
+  }, [moodChartView, moodFilteredSeries.length]);
+
+  useEffect(() => {
+    setHoverIntensityIndex(null);
+  }, [intensityChartView, intensityFilteredSeries.length]);
 
   const heatmapDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const heatmapSlots = [
@@ -236,21 +341,12 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     { label: "20:00-24:00", start: 20, end: 24 }
   ];
 
-  const effectiveCravingLogs = useMemo(() => {
-    if (cravingLogs.length) return cravingLogs;
-    return journalEntries
-      .filter((entry) => entry.cravings > 0 && entry.createdAt)
-      .map((entry) => {
-        const created = new Date(entry.createdAt as string);
-        return {
-          date: entry.date,
-          hour: created.getHours(),
-          intensity: entry.cravings,
-          source: "journal" as const,
-          createdAt: entry.createdAt as string
-        };
-      });
-  }, [cravingLogs, journalEntries]);
+  const trendStartKey = getStartKeyForView(trendView);
+  const trendCravingLogs = useMemo(() => {
+    if (!trendStartKey) return effectiveCravingLogs;
+    return effectiveCravingLogs.filter((log) => log.date >= trendStartKey);
+  }, [effectiveCravingLogs, trendStartKey]);
+  const avgCravingIntensity = useMemo(() => average(trendCravingLogs.map((log) => log.intensity)), [trendCravingLogs]);
 
   const heatmapMatrix = useMemo(() => {
     const matrix = Array.from({ length: 7 }, () => Array.from({ length: 6 }, () => 0));
@@ -322,103 +418,69 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
       const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
       const end = new Date();
       const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
-      const url = `${apiBase}/events?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`;
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${authTokens.accessToken}` }
-      });
-      if (!response.ok) {
+      const diaryUrl = `${apiBase}/diary?start=${encodeURIComponent(toIsoDate(start))}&end=${encodeURIComponent(toIsoDate(end))}`;
+      const cravingsUrl = `${apiBase}/events?event_type=craving&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`;
+
+      const [diaryResponse, cravingsResponse] = await Promise.all([
+        fetch(diaryUrl, {
+          headers: { Authorization: `Bearer ${authTokens.accessToken}` }
+        }),
+        fetch(cravingsUrl, {
+          headers: { Authorization: `Bearer ${authTokens.accessToken}` }
+        })
+      ]);
+
+      if (!diaryResponse.ok || !cravingsResponse.ok) {
         if (runId === importRunRef.current) {
           setImportError(journalEntries.length ? "" : "Could not import backend data. Check login state and active program.");
         }
         return;
       }
-      const rows = (await response.json()) as Array<{
-        event_type: "use" | "craving" | "relapse";
+
+      const diaryRows = (await diaryResponse.json()) as Array<{
+        entry_date: string;
+        mood: number;
+        note: string | null;
+        created_at: string;
+      }>;
+
+      const cravingRows = (await cravingsResponse.json()) as Array<{
         intensity: number | null;
-        notes: string | null;
         occurred_at: string;
       }>;
 
-      const byDate = new Map<
-        string,
-        { moodSum: number; moodN: number; cravingSum: number; cravingN: number; note: string; createdAt: string }
-      >();
-
-      rows.forEach((row) => {
-        const date = new Date(row.occurred_at);
-        const key = toIsoDate(date);
-        const prev = byDate.get(key) ?? {
-          moodSum: 0,
-          moodN: 0,
-          cravingSum: 0,
-          cravingN: 0,
-          note: "",
-          createdAt: row.occurred_at
-        };
-
-        if (row.event_type === "craving" && row.intensity != null) {
-          prev.cravingSum += row.intensity;
-          prev.cravingN += 1;
-          prev.moodSum += Math.max(1, 10 - row.intensity);
-          prev.moodN += 1;
-        } else if (row.event_type === "relapse") {
-          prev.cravingSum += 8;
-          prev.cravingN += 1;
-          prev.moodSum += 2;
-          prev.moodN += 1;
-        } else if (row.event_type === "use") {
-          prev.moodSum += 5;
-          prev.moodN += 1;
-        }
-
-        if (row.notes && row.notes.trim()) prev.note = row.notes.trim();
-        if (row.occurred_at > prev.createdAt) prev.createdAt = row.occurred_at;
-        byDate.set(key, prev);
+      const cravingsByDate = new Map<string, { sum: number; count: number }>();
+      cravingRows.forEach((row) => {
+        if (row.intensity == null) return;
+        const dt = new Date(row.occurred_at);
+        const key = toIsoDate(dt);
+        const prev = cravingsByDate.get(key) ?? { sum: 0, count: 0 };
+        prev.sum += row.intensity;
+        prev.count += 1;
+        cravingsByDate.set(key, prev);
       });
 
-      const cursor = new Date(start);
-      const endDate = new Date(end);
-      while (cursor <= endDate) {
-        const key = toIsoDate(cursor);
-        if (!byDate.has(key)) {
-          byDate.set(key, {
-            moodSum: 5,
-            moodN: 1,
-            cravingSum: 0,
-            cravingN: 1,
-            note: "",
-            createdAt: new Date(
-              cursor.getFullYear(),
-              cursor.getMonth(),
-              cursor.getDate(),
-              12,
-              0,
-              0,
-              0
-            ).toISOString()
-          });
-        }
-        cursor.setDate(cursor.getDate() + 1);
-      }
-
-      const imported: JournalEntry[] = Array.from(byDate.entries())
-        .map(([date, value]) => ({
-          date,
-          cravings: value.cravingN ? Math.round(value.cravingSum / value.cravingN) : 0,
-          mood: value.moodN ? Math.min(10, Math.max(1, Math.round(value.moodSum / value.moodN))) : 5,
-          note: value.note,
-          createdAt: value.createdAt
-        }))
+      const imported: JournalEntry[] = diaryRows
+        .map((row) => {
+          const dailyCraving = cravingsByDate.get(row.entry_date);
+          return {
+            date: row.entry_date,
+            cravings: dailyCraving?.count ? Math.round(dailyCraving.sum / dailyCraving.count) : 0,
+            mood: row.mood,
+            note: row.note ?? "",
+            createdAt: row.created_at
+          };
+        })
         .sort((a, b) => (a.date < b.date ? 1 : -1));
 
-      const importedCravingLogs: CravingLog[] = rows
-        .filter((row) => row.event_type === "craving" || row.event_type === "relapse")
+      const importedCravingLogs: CravingLog[] = cravingRows
+        .filter((row) => row.intensity != null)
         .map((row) => {
           const dt = new Date(row.occurred_at);
           return {
             date: toIsoDate(dt),
             hour: dt.getHours(),
-            intensity: row.event_type === "relapse" ? 8 : Math.max(1, row.intensity ?? 1),
+            intensity: Math.max(1, row.intensity ?? 1),
             source: "backend",
             createdAt: row.occurred_at
           };
@@ -481,30 +543,51 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
         <div className="dashboard-grid">
           <div className="dashboard-card metrics-card" style={{ ["--card-index" as string]: 0 }}>
             <div className="card-header">
-              <h3>Trend direction</h3>
-              <span className="card-subtitle">Rolling windows, not daily noise</span>
+              <div>
+                <h3>Trend direction</h3>
+                <span className="card-subtitle">Rolling windows, not daily noise</span>
+              </div>
+              <label className="chart-view-control">
+                <span>View</span>
+                <select value={trendView} onChange={(event) => setTrendView(event.target.value as ChartView)}>
+                  <option value="1w">1 week</option>
+                  <option value="1m">1 month</option>
+                  <option value="all">All time</option>
+                </select>
+              </label>
             </div>
             {importError ? <p className="future-note">{importError}</p> : null}
             <div className="metrics-grid">
               <div className="metric">
                 <span>Average cravings/day</span>
-                <strong>{journalEntries.length ? avgCravingsLabel : "--"}</strong>
-                <em>Last 7 days</em>
+                <strong>{trendSeries.length ? avgCravingsLabel : "--"}</strong>
+                <em>{trendView === "all" ? "Full available range" : trendView === "1w" ? "Last 7 days" : "Last 30 days"}</em>
               </div>
               <div className="metric">
                 <span>% change vs baseline</span>
-                <strong>{baselineUnlock ? "--" : `${changeVsBaseline > 0 ? "+" : ""}${changeVsBaseline.toFixed(0)}%`}</strong>
-                <em>{baselineUnlock ? formatUnlock(baselineUnlock) : "Past 7 vs prior 7"}</em>
+                <strong className={`metric-change metric-change--${baselineChangeTone}`}>
+                  <span className="metric-change-arrow">{baselineArrow}</span>
+                  {canCompareBaseline ? `${changeVsBaseline > 0 ? "+" : ""}${changeVsBaseline.toFixed(0)}%` : "--"}
+                </strong>
+                <em>{baselineUnlock ? formatUnlock(baselineUnlock) : baselineLabel}</em>
               </div>
               <div className="metric">
-                <span>Average urge duration</span>
-                <strong>--</strong>
-                <em>{durationReady ? "Duration tracking pending" : formatUnlock(durationUnlock)}</em>
+                <span>Average craving intensity</span>
+                <strong>{trendCravingLogs.length ? avgCravingIntensity.toFixed(1) : "--"}</strong>
+                <em>
+                  {trendCravingLogs.length
+                    ? trendView === "all"
+                      ? "Across all craving events"
+                      : trendView === "1w"
+                        ? "Across last 7 days"
+                        : "Across last 30 days"
+                    : "No craving events in selected view"}
+                </em>
               </div>
               <div className="metric">
                 <span>Days with downward trend</span>
-                <strong>{journalEntries.length ? String(downwardDays) : "--"}</strong>
-                <em>Last 7 days</em>
+                <strong>{trendSeries.length ? String(downwardDays) : "--"}</strong>
+                <em>{trendView === "all" ? "Across full range" : trendView === "1w" ? "Last 7 days" : "Last 30 days"}</em>
               </div>
             </div>
           </div>
@@ -517,26 +600,25 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
               </div>
               <label className="chart-view-control">
                 <span>View</span>
-                <select value={chartView} onChange={(event) => setChartView(event.target.value as ChartView)}>
-                  <option value="1d">1 day</option>
+                <select value={cravingsChartView} onChange={(event) => setCravingsChartView(event.target.value as ChartView)}>
                   <option value="1w">1 week</option>
                   <option value="1m">1 month</option>
                   <option value="all">All time</option>
                 </select>
               </label>
             </div>
-            {chartUnlock || filteredSeries.length < 2 ? (
+            {chartUnlock || cravingsFilteredSeries.length < 2 ? (
               <div className="chart-placeholder">
                 {chartUnlock ? formatUnlock(chartUnlock) : "Not enough points in this view. Select a wider range."}
               </div>
             ) : (
               <div className="chart-shell">
                 {(() => {
-                  const chart = buildTrendGeometry(filteredCravingsSeries, filteredSeries.map((item) => item.date));
-                  const gradientId = `cravings-area-grad-${chartAnimKey}`;
+                  const chart = buildTrendGeometry(filteredCravingsSeries, cravingsFilteredSeries.map((item) => item.date));
+                  const gradientId = `cravings-area-grad-${cravingsChartAnimKey}`;
                   return (
                     <svg
-                      key={`cravings-${chartAnimKey}`}
+                      key={`cravings-${cravingsChartAnimKey}`}
                       viewBox={`0 0 ${chart.width} ${chart.height}`}
                       className="chart-line chart-line--full"
                       aria-hidden="true"
@@ -563,7 +645,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                         className="chart-axis-title"
                         textAnchor="middle"
                       >
-                        Intensity
+                        Number of cravings
                       </text>
                       <polygon points={chart.areaPoints} className="chart-area chart-area--animate" style={{ fill: `url(#${gradientId})` }} />
                       <polyline points={chart.linePoints} className="chart-polyline chart-polyline--animate" pathLength={1} />
@@ -585,7 +667,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                       })}
                       {hoverCravingIndex !== null ? (() => {
                         const value = filteredCravingsSeries[hoverCravingIndex];
-                        const date = filteredSeries[hoverCravingIndex]?.date ?? "";
+                        const date = cravingsFilteredSeries[hoverCravingIndex]?.date ?? "";
                         const x = chart.toX(hoverCravingIndex);
                         const y = chart.toY(value);
                         const boxX = Math.max(chart.left + 6, Math.min(chart.width - 130, x - 62));
@@ -598,7 +680,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                               {formatChartDate(date)}
                             </text>
                             <text x={boxX + 8} y={boxY + 33} className="chart-tooltip-text chart-tooltip-text--strong">
-                              Cravings: {value.toFixed(1)}
+                              Cravings: {value.toFixed(0)}
                             </text>
                           </g>
                         );
@@ -627,26 +709,25 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
               </div>
               <label className="chart-view-control">
                 <span>View</span>
-                <select value={chartView} onChange={(event) => setChartView(event.target.value as ChartView)}>
-                  <option value="1d">1 day</option>
+                <select value={moodChartView} onChange={(event) => setMoodChartView(event.target.value as ChartView)}>
                   <option value="1w">1 week</option>
                   <option value="1m">1 month</option>
                   <option value="all">All time</option>
                 </select>
               </label>
             </div>
-            {chartUnlock || filteredSeries.length < 2 ? (
+            {chartUnlock || moodFilteredSeries.length < 2 ? (
               <div className="chart-placeholder">
                 {chartUnlock ? formatUnlock(chartUnlock) : "Not enough points in this view. Select a wider range."}
               </div>
             ) : (
               <div className="chart-shell">
                 {(() => {
-                  const chart = buildTrendGeometry(filteredMoodSeries, filteredSeries.map((item) => item.date));
-                  const gradientId = `mood-area-grad-${chartAnimKey}`;
+                  const chart = buildTrendGeometry(filteredMoodSeries, moodFilteredSeries.map((item) => item.date));
+                  const gradientId = `mood-area-grad-${moodChartAnimKey}`;
                   return (
                     <svg
-                      key={`mood-${chartAnimKey}`}
+                      key={`mood-${moodChartAnimKey}`}
                       viewBox={`0 0 ${chart.width} ${chart.height}`}
                       className="chart-line chart-line--full"
                       aria-hidden="true"
@@ -703,7 +784,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                       })}
                       {hoverMoodIndex !== null ? (() => {
                         const value = filteredMoodSeries[hoverMoodIndex];
-                        const date = filteredSeries[hoverMoodIndex]?.date ?? "";
+                        const date = moodFilteredSeries[hoverMoodIndex]?.date ?? "";
                         const x = chart.toX(hoverMoodIndex);
                         const y = chart.toY(value);
                         const boxX = Math.max(chart.left + 6, Math.min(chart.width - 130, x - 62));
@@ -737,7 +818,130 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card chart-card heatmap-card" style={{ ["--card-index" as string]: 3 }}>
+          <div className="dashboard-card chart-card intensity-trend-card" style={{ ["--card-index" as string]: 3 }}>
+            <div className="card-header">
+              <div>
+                <h3>Craving intensity trend</h3>
+                <span className="card-subtitle">Daily average from logged craving events</span>
+              </div>
+              <label className="chart-view-control">
+                <span>View</span>
+                <select value={intensityChartView} onChange={(event) => setIntensityChartView(event.target.value as ChartView)}>
+                  <option value="1w">1 week</option>
+                  <option value="1m">1 month</option>
+                  <option value="all">All time</option>
+                </select>
+              </label>
+            </div>
+            {!effectiveCravingLogs.length || intensityFilteredSeries.length < 2 ? (
+              <div className="chart-placeholder">
+                {!effectiveCravingLogs.length
+                  ? "No craving events logged yet to plot daily intensity averages."
+                  : "Not enough points in this view. Select a wider range."}
+              </div>
+            ) : (
+              <div className="chart-shell">
+                {(() => {
+                  const chart = buildTrendGeometry(
+                    filteredIntensityValues,
+                    intensityFilteredSeries.map((item) => item.date),
+                    1520
+                  );
+                  const gradientId = `intensity-area-grad-${intensityChartAnimKey}`;
+                  return (
+                    <svg
+                      key={`intensity-${intensityChartAnimKey}`}
+                      viewBox={`0 0 ${chart.width} ${chart.height}`}
+                      className="chart-line chart-line--full"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="rgba(255, 184, 120, 0.54)" />
+                          <stop offset="68%" stopColor="rgba(255, 184, 120, 0.16)" />
+                          <stop offset="100%" stopColor="rgba(255, 184, 120, 0.03)" />
+                        </linearGradient>
+                      </defs>
+                      {chart.ticks.map((tick) => (
+                        <g key={`intensity-y-${tick.value}`}>
+                          <line x1={chart.left} y1={tick.y} x2={chart.width - 18} y2={tick.y} className="chart-grid" />
+                          <text x={chart.left - 10} y={tick.y + 4} textAnchor="end" className="chart-tick">
+                            {tick.value}
+                          </text>
+                        </g>
+                      ))}
+                      <text
+                        x={16}
+                        y={chart.top + chart.innerHeight / 2}
+                        transform={`rotate(-90 16 ${chart.top + chart.innerHeight / 2})`}
+                        className="chart-axis-title"
+                        textAnchor="middle"
+                      >
+                        Avg intensity
+                      </text>
+                      <polygon
+                        points={chart.areaPoints}
+                        className="chart-area chart-area--intensity chart-area--animate"
+                        style={{ fill: `url(#${gradientId})` }}
+                      />
+                      <polyline
+                        points={chart.linePoints}
+                        className="chart-polyline chart-polyline--intensity chart-polyline--animate"
+                        pathLength={1}
+                      />
+                      {filteredIntensityValues.map((value, index) => {
+                        const x = chart.toX(index);
+                        const y = chart.toY(value);
+                        return (
+                          <circle
+                            key={`intensity-point-${index}`}
+                            cx={x}
+                            cy={y}
+                            r="4"
+                            className="chart-point chart-point--intensity"
+                            style={{ animationDelay: `${0.28 + index * 0.04}s` }}
+                            onMouseEnter={() => setHoverIntensityIndex(index)}
+                            onMouseLeave={() => setHoverIntensityIndex(null)}
+                          />
+                        );
+                      })}
+                      {hoverIntensityIndex !== null ? (() => {
+                        const value = filteredIntensityValues[hoverIntensityIndex];
+                        const date = intensityFilteredSeries[hoverIntensityIndex]?.date ?? "";
+                        const x = chart.toX(hoverIntensityIndex);
+                        const y = chart.toY(value);
+                        const boxX = Math.max(chart.left + 6, Math.min(chart.width - 150, x - 74));
+                        const boxY = Math.max(6, y - 52);
+                        return (
+                          <g className="chart-tooltip">
+                            <line x1={x} y1={y} x2={x} y2={chart.top + chart.innerHeight} className="chart-guide-line" />
+                            <rect x={boxX} y={boxY} width="148" height="44" rx="8" className="chart-tooltip-box" />
+                            <text x={boxX + 8} y={boxY + 16} className="chart-tooltip-text">
+                              {formatChartDate(date)}
+                            </text>
+                            <text x={boxX + 8} y={boxY + 33} className="chart-tooltip-text chart-tooltip-text--strong">
+                              Avg intensity: {value.toFixed(1)}
+                            </text>
+                          </g>
+                        );
+                      })() : null}
+                      {chart.xLabels.map((item, idx) => (
+                        <text key={`intensity-x-${idx}`} x={item.x} y={chart.height - 10} textAnchor="middle" className="chart-tick">
+                          {item.text}
+                        </text>
+                      ))}
+                      <text x={chart.width / 2} y={chart.height + 12} textAnchor="middle" className="chart-axis-title">
+                        Date
+                      </text>
+                    </svg>
+                  );
+                })()}
+                <div className="chart-axis">Daily avg intensity across logged craving events</div>
+              </div>
+            )}
+          </div>
+
+          <div className="dashboard-card chart-card heatmap-card" style={{ ["--card-index" as string]: 4 }}>
             <div className="card-header">
               <h3>Time-of-day distribution</h3>
               <span className="card-subtitle">Craving intensity by weekday and 4-hour window</span>
@@ -787,7 +991,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card interpretation-card" style={{ ["--card-index" as string]: 4 }}>
+          <div className="dashboard-card interpretation-card" style={{ ["--card-index" as string]: 5 }}>
             <div className="card-header">
               <h3>Interpretation</h3>
               <span className="card-subtitle">Pattern note</span>
@@ -800,7 +1004,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card ifthen-card" style={{ ["--card-index" as string]: 5 }}>
+          <div className="dashboard-card ifthen-card" style={{ ["--card-index" as string]: 6 }}>
             <div className="card-header">
               <h3>If-then insights</h3>
               <span className="card-subtitle">Graph-backed signals</span>
@@ -816,7 +1020,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 6 }}>
+          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 7 }}>
             <div className="card-header">
               <h3>Deep dives</h3>
               <span className="card-subtitle">Optional belief work</span>
@@ -902,7 +1106,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             </details>
           </div>
 
-          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 7 }}>
+          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 8 }}>
             <div className="card-header">
               <h3>AI interpreter</h3>
               <span className="card-subtitle">Planned premium layer</span>

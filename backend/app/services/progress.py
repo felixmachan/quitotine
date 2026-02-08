@@ -1,9 +1,8 @@
-﻿from datetime import datetime
+from datetime import datetime
 from math import exp
 from typing import Iterable
 
-from app.models.program import Program
-from app.models.event import Event
+from app.models.models import Event, Program
 
 
 def _days_between(start: datetime, end: datetime) -> int:
@@ -72,3 +71,4 @@ def select_message_of_the_day(days_since_start: int) -> str:
     ]
     index = days_since_start % len(messages)
     return messages[index]
+

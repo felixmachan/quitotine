@@ -1,15 +1,22 @@
-﻿from app.models.user import User
-from app.models.program import Program
-from app.models.product_profile import ProductProfile
-from app.models.event import Event
-from app.models.refresh_token import RefreshToken
-from app.models.enums import ProductType, GoalType, EventType, TriggerType
+from app.models.models import (
+    DiaryEntry,
+    Event,
+    EventType,
+    GoalType,
+    ProductProfile,
+    ProductType,
+    Program,
+    RefreshToken,
+    TriggerType,
+    User,
+)
 
 __all__ = [
     "User",
     "Program",
     "ProductProfile",
     "Event",
+    "DiaryEntry",
     "RefreshToken",
     "ProductType",
     "GoalType",

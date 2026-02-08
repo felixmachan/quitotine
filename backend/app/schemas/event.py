@@ -1,5 +1,8 @@
 ﻿from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
 from app.models.enums import EventType, TriggerType
 
 
@@ -21,7 +24,7 @@ class EventCreate(BaseModel):
 class EventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: UUID
     event_type: EventType
     amount: float | None
     intensity: int | None

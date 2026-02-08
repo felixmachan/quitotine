@@ -1,10 +1,10 @@
-﻿import uuid
+import uuid
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.user import User
+from app.models.models import User
 from app.security.jwt import decode_token
 
 security = HTTPBearer()
@@ -24,3 +24,4 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid token")
     return user
+

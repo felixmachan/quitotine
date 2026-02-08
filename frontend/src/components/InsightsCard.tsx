@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { JournalEntry, toIsoDate } from "../app/quitLogic";
+import "./InsightsCard.css";
 
 interface InsightsCardProps {
   entries: JournalEntry[];

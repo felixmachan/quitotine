@@ -1,11 +1,11 @@
-﻿from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.user import UserOut, UserUpdate, UserPasswordUpdate
 from app.security.dependencies import get_current_user
 from app.security.passwords import hash_password, validate_password_strength
-from app.models.user import User
+from app.models.models import User
 
 router = APIRouter()
 
@@ -38,3 +38,4 @@ def update_password(
     current_user.password_hash = hash_password(payload.password)
     db.commit()
     return {"detail": "ok"}
+

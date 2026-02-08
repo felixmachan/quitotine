@@ -15,6 +15,7 @@ import AppNav from "../components/AppNav";
 import CravingToolkit from "../components/CravingToolkit";
 import JournalCard from "../components/JournalCard";
 import personalization from "../../../text/personalization_en.json";
+import "./DashboardScene.css";
 
 interface DashboardSceneProps {
   data: OnboardingData;
@@ -33,18 +34,9 @@ interface FutureMessage {
   createdAt: string;
 }
 
-interface CravingLog {
-  date: string;
-  hour: number;
-  intensity: number;
-  source: "journal" | "backend";
-  createdAt: string;
-}
-
 export default function DashboardScene({ data, activeRoute, onNavigate, entered = false }: DashboardSceneProps) {
   const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
   const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
-  const [, setCravingLogs] = useLocalStorage<CravingLog[]>("quitotine:cravingLogs", []);
   const [, setRelapseLog] = useLocalStorage<RelapseEvent[]>("quitotine:relapse", []);
   const initialMode: ThemeMode =
     typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -133,20 +125,6 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
       const next = prev.filter((item) => item.date !== entry.date);
       return [entry, ...next];
     });
-    if (entry.cravings > 0 && entry.createdAt) {
-      const createdAt = entry.createdAt;
-      const created = new Date(createdAt);
-      setCravingLogs((prev) => [
-        ...prev,
-        {
-          date: entry.date,
-          hour: created.getHours(),
-          intensity: entry.cravings,
-          source: "journal",
-          createdAt
-        }
-      ]);
-    }
   };
 
   const planDayLabel = `${dayIndex} of ${activePlan.durationDays}`;

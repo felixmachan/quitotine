@@ -1,6 +1,9 @@
 ﻿from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field
-from app.models.enums import ProductType, GoalType
+
+from app.models.enums import GoalType, ProductType
 
 
 class ProductProfileCreate(BaseModel):
@@ -14,7 +17,7 @@ class ProductProfileCreate(BaseModel):
 class ProductProfileOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: UUID
     product_type: ProductType
     baseline_amount: float
     unit_label: str
@@ -31,7 +34,7 @@ class ProgramCreate(BaseModel):
 class ProgramOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: UUID
     goal_type: GoalType
     started_at: datetime
     is_active: bool

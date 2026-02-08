@@ -1,10 +1,11 @@
 ﻿from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 
 def _auth_header(client):
     register = client.post(
         "/api/v1/auth/register",
-        json={"email": "c@example.com", "password": "StrongPass1!"},
+        json={"email": f"{uuid4()}@example.com", "password": "StrongPass1!"},
     )
     token = register.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

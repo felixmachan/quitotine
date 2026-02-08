@@ -1,13 +1,11 @@
-﻿from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.program import Program
-from app.models.event import Event
+from app.models.models import Event, Program, User
 from app.schemas.progress import ProgressOut
 from app.security.dependencies import get_current_user
-from app.models.user import User
 from app.services.progress import calculate_progress
 
 router = APIRouter()
@@ -43,3 +41,4 @@ def get_progress(
 
     result = calculate_progress(program, recent_events, relapse_events, now)
     return ProgressOut(**result)
+

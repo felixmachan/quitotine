@@ -1,12 +1,11 @@
-﻿from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.user import User
-from app.models.refresh_token import RefreshToken
+from app.models.models import RefreshToken, User
 from app.schemas.auth import UserRegister, UserLogin, TokenPair, TokenRefresh
 from app.security.passwords import verify_password, hash_password, validate_password_strength
 from app.security.jwt import create_access_token, create_refresh_token, decode_token
@@ -113,3 +112,4 @@ def logout(payload: TokenRefresh, db: Session = Depends(get_db)):
         db.commit()
 
     return {"detail": "ok"}
+

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
+    diary_log_start_hour: int = 18
 
     cors_origins: List[str] = [
         "http://localhost:3000",

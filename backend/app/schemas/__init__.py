@@ -2,6 +2,7 @@
 from app.schemas.user import UserOut, UserUpdate, UserPasswordUpdate
 from app.schemas.program import ProgramCreate, ProgramOut, ProductProfileCreate, ProductProfileOut
 from app.schemas.event import EventCreate, EventOut
+from app.schemas.diary import DiaryEntryCreate, DiaryEntryOut
 from app.schemas.progress import ProgressOut, DashboardOut
 
 __all__ = [
@@ -18,6 +19,8 @@ __all__ = [
     "ProductProfileOut",
     "EventCreate",
     "EventOut",
+    "DiaryEntryCreate",
+    "DiaryEntryOut",
     "ProgressOut",
     "DashboardOut",
 ]

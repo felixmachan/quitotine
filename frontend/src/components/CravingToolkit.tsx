@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import "./CravingToolkit.css";
 
 type ToolKey = "breathing" | "surfing" | "micro";
 

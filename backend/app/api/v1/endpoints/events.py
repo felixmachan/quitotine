@@ -1,13 +1,12 @@
-﻿from datetime import datetime
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.event import Event
-from app.models.program import Program
+from app.models.enums import EventType
+from app.models.models import Event, Program, User
 from app.schemas.event import EventCreate, EventOut
 from app.security.dependencies import get_current_user
-from app.models.user import User
 
 router = APIRouter()
 
@@ -51,6 +50,7 @@ def list_events(
     current_user: User = Depends(get_current_user),
     start: datetime | None = Query(default=None),
     end: datetime | None = Query(default=None),
+    event_type: EventType | None = Query(default=None),
 ):
     program = get_active_program(db, current_user.id)
     if not program:
@@ -61,5 +61,8 @@ def list_events(
         query = query.filter(Event.occurred_at >= start)
     if end:
         query = query.filter(Event.occurred_at <= end)
+    if event_type:
+        query = query.filter(Event.event_type == event_type.value)
 
     return query.order_by(Event.occurred_at.desc()).all()
+
