@@ -19,7 +19,7 @@ import DiaryScene from "../scenes/DiaryScene";
 import ProfileScene from "../scenes/ProfileScene";
 import LoginScene from "../scenes/LoginScene";
 import ProgressRail from "../components/ProgressRail";
-import { AuthTokens, AuthUser, OnboardingData } from "./types";
+import { AuthTokens, AuthUser, CurrencyCode, OnboardingData } from "./types";
 import { useLocalStorage } from "./useLocalStorage";
 import { useThemeStage } from "./useThemeStage";
 import { buildQuitPlan, toIsoDate, type JournalEntry } from "./quitLogic";
@@ -32,7 +32,10 @@ const initialData: OnboardingData = {
   durationUnit: "years",
   dailyAmount: null,
   dailyUnit: "",
-  goalType: ""
+  strengthAmount: 8,
+  goalType: "",
+  unitPrice: null,
+  unitPriceCurrency: "USD"
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -170,6 +173,18 @@ export default function App() {
     if (!["years", "months", "weeks"].includes(data.durationUnit)) normalized.durationUnit = "years";
     if (data.durationValue != null && Number.isNaN(Number(data.durationValue))) {
       normalized.durationValue = null;
+    }
+    if (data.dailyAmount != null && Number.isNaN(Number(data.dailyAmount))) {
+      normalized.dailyAmount = null;
+    }
+    if (Number.isNaN(Number(data.strengthAmount)) || Number(data.strengthAmount) <= 0) {
+      normalized.strengthAmount = 8;
+    }
+    if (data.unitPrice != null && Number.isNaN(Number(data.unitPrice))) {
+      normalized.unitPrice = null;
+    }
+    if (!["USD", "EUR", "HUF"].includes(data.unitPriceCurrency)) {
+      normalized.unitPriceCurrency = "USD";
     }
     if (typeof data.firstName !== "string") normalized.firstName = "";
     if (typeof data.lastName !== "string") normalized.lastName = "";
@@ -328,7 +343,8 @@ export default function App() {
       if (data.durationUnit === "months") return Math.round(value * 30.4);
       return Math.round(value * 365);
     })();
-    const seededPlan = buildQuitPlan({ dailyUnits, useDays, mgPerUnit: 8 });
+    const mgPerUnit = Number.isFinite(data.strengthAmount) ? Math.max(0.1, Number(data.strengthAmount)) : 8;
+    const seededPlan = buildQuitPlan({ dailyUnits, useDays, mgPerUnit });
     seededPlan.startDate = startDate.toISOString();
     seededPlan.progressOffsetDays = 0;
 
@@ -459,6 +475,38 @@ export default function App() {
     }
   };
 
+  const saveNicotineProfile = async (unitPrice: number | null, currency: CurrencyCode) => {
+    if (!authTokens?.accessToken) {
+      throw new Error("Not authenticated.");
+    }
+    const response = await fetch(`${API_BASE}/programs/active/product-profile`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authTokens.accessToken}`
+      },
+      body: JSON.stringify({ cost_per_unit: unitPrice })
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        setAuthTokens(null);
+        setAuthUser(null);
+        navigate("/login", true);
+        throw new Error("Session expired. Please log in again.");
+      }
+      if (response.status === 404) {
+        throw new Error("No active program found. Complete onboarding to create one.");
+      }
+      throw new Error(`Could not save nicotine profile${await parseError(response)}.`);
+    }
+
+    setData((prev) => ({
+      ...prev,
+      unitPrice,
+      unitPriceCurrency: currency
+    }));
+  };
+
   useEffect(() => {
     if (!isAuthenticated || !authTokens?.accessToken) return;
     void fetchMe(authTokens.accessToken);
@@ -535,6 +583,7 @@ export default function App() {
           onLogout={logout}
           onAccountSave={saveAccount}
           onPasswordChange={changePassword}
+          onNicotineProfileSave={saveNicotineProfile}
         />
       </div>
     );
@@ -613,8 +662,10 @@ export default function App() {
           productType={data.productType}
           amount={data.dailyAmount}
           unit={data.dailyUnit}
+          strengthMg={data.strengthAmount}
           onAmount={(value) => updateData({ dailyAmount: value })}
           onUnit={(value) => updateData({ dailyUnit: value })}
+          onStrengthMg={(value) => updateData({ strengthAmount: value })}
         />
         <OnboardingGoalScene
           id="onboarding-goal"

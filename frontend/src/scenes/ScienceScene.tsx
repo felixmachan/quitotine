@@ -172,7 +172,10 @@ export default function ScienceScene({ activeRoute, onNavigate, entered = false 
     durationUnit: "years",
     dailyAmount: null,
     dailyUnit: "",
-    goalType: ""
+    strengthAmount: 8,
+    goalType: "",
+    unitPrice: null,
+    unitPriceCurrency: "USD"
   });
   const [plan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
   const [journalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
@@ -189,9 +192,10 @@ export default function ScienceScene({ activeRoute, onNavigate, entered = false 
   const activePlan = useMemo(() => {
     if (plan) return plan;
     const dailyUnits = Number.isFinite(onboarding.dailyAmount) ? Math.max(0, Number(onboarding.dailyAmount)) : 0;
+    const mgPerUnit = Number.isFinite(onboarding.strengthAmount) ? Math.max(0.1, Number(onboarding.strengthAmount)) : 8;
     const useDays = onboarding.durationValue ? Math.max(1, Number(onboarding.durationValue)) * 30 : 30;
-    return buildQuitPlan({ dailyUnits, useDays, mgPerUnit: 8 });
-  }, [plan, onboarding.dailyAmount, onboarding.durationValue]);
+    return buildQuitPlan({ dailyUnits, useDays, mgPerUnit });
+  }, [plan, onboarding.dailyAmount, onboarding.durationValue, onboarding.strengthAmount]);
 
   const { dayIndex } = getJourneyProgress(activePlan);
   const recent = useMemo(() => [...journalEntries].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 5), [journalEntries]);

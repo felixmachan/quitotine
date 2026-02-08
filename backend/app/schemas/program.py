@@ -31,6 +31,10 @@ class ProgramCreate(BaseModel):
     product_profile: ProductProfileCreate
 
 
+class ProductProfileCostUpdate(BaseModel):
+    cost_per_unit: float | None = Field(default=None, gt=0)
+
+
 class ProgramOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -19,6 +19,7 @@ export default function OnboardingSummaryScene({
 }: OnboardingSummarySceneProps) {
   const dailyAmount =
     data.dailyAmount != null && data.dailyAmount !== 0 ? `${data.dailyAmount} ${data.dailyUnit}` : "-";
+  const strength = Number.isFinite(data.strengthAmount) ? `${data.strengthAmount} mg` : "-";
   const duration =
     data.durationValue != null && data.durationValue !== 0
       ? `${data.durationValue} ${data.durationUnit}`
@@ -51,6 +52,10 @@ export default function OnboardingSummaryScene({
             <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
               <p className="text-[11px] uppercase tracking-[0.25em] text-white/40">Name</p>
               <p className="mt-2 text-lg font-semibold text-white">{fullName}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+              <p className="text-[11px] uppercase tracking-[0.25em] text-white/40">Strength</p>
+              <p className="mt-2 text-lg font-semibold text-white">{strength}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 sm:col-span-2">
               <p className="text-[11px] uppercase tracking-[0.25em] text-white/40">Goal</p>

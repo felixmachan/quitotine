@@ -48,14 +48,14 @@
 .metrics-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(4, minmax(200px, 1fr));
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
   align-items: stretch;
 }
 
 .metric {
   display: grid;
   gap: 6px;
-  padding: 12px;
+  padding: 10px;
   border-radius: 16px;
   border: 1px solid rgba(120, 240, 220, 0.12);
   background: rgba(10, 24, 32, 0.6);
@@ -76,6 +76,12 @@
 .metrics-card .card-header > div {
   display: grid;
   gap: 4px;
+}
+
+@media (max-width: 1320px) {
+  .metrics-grid {
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+  }
 }
 
 @media (max-width: 1100px) {

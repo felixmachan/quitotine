@@ -55,6 +55,7 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
   const journalPanelRef = useRef<HTMLDivElement | null>(null);
 
   const dailyUnits = Number.isFinite(data.dailyAmount) ? Math.max(0, Number(data.dailyAmount)) : 0;
+  const mgPerUnit = Number.isFinite(data.strengthAmount) ? Math.max(0.1, Number(data.strengthAmount)) : 8;
   const useDays = useMemo(() => {
     if (!data.durationValue) return 1;
     const value = Math.max(1, Number(data.durationValue));
@@ -64,12 +65,12 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
   }, [data.durationUnit, data.durationValue]);
 
   useEffect(() => {
-    if (!plan) {
-      setPlan(buildQuitPlan({ dailyUnits, useDays, mgPerUnit: 8 }));
+    if (!plan || plan.mgPerUnit !== mgPerUnit || plan.dailyUnits !== dailyUnits || plan.useDays !== useDays) {
+      setPlan(buildQuitPlan({ dailyUnits, useDays, mgPerUnit }));
     }
-  }, [plan, dailyUnits, useDays, setPlan]);
+  }, [plan, dailyUnits, useDays, mgPerUnit, setPlan]);
 
-  const activePlan = plan ?? buildQuitPlan({ dailyUnits, useDays, mgPerUnit: 8 });
+  const activePlan = plan ?? buildQuitPlan({ dailyUnits, useDays, mgPerUnit });
   const { dayIndex, progress } = getJourneyProgress(activePlan);
 
   useEffect(() => {

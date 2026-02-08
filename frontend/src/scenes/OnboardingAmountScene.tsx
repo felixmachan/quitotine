@@ -8,8 +8,10 @@ interface OnboardingAmountSceneProps {
   productType: string;
   amount: number | null;
   unit: string;
+  strengthMg: number;
   onAmount: (value: number | null) => void;
   onUnit: (value: string) => void;
+  onStrengthMg: (value: number) => void;
 }
 
 const unitOptionsByProduct: Record<string, { label: string; value: string }[]> = {
@@ -37,8 +39,10 @@ export default function OnboardingAmountScene({
   productType,
   amount,
   unit,
+  strengthMg,
   onAmount,
-  onUnit
+  onUnit,
+  onStrengthMg
 }: OnboardingAmountSceneProps) {
   const handleStep = (delta: number) => {
     const next = Math.max((amount ?? 0) + delta, 0);
@@ -94,6 +98,20 @@ export default function OnboardingAmountScene({
           <div className="flex flex-1 flex-col gap-2">
             <span className="text-xs uppercase tracking-[0.3em] text-white/40">Unit</span>
             <CustomSelect value={unit} options={unitOptions} onChange={onUnit} ariaLabel="Unit" />
+          </div>
+        </div>
+        <div className="mt-6 flex flex-col gap-2">
+          <span className="text-xs uppercase tracking-[0.3em] text-white/40">Strength (mg)</span>
+          <div className="flex h-16 items-center gap-4 rounded-[24px] border border-white/10 bg-white/5 px-6">
+            <input
+              type="number"
+              value={strengthMg}
+              onChange={(event) => onStrengthMg(Math.max(0.1, Number(event.target.value) || 0.1))}
+              className="w-full bg-transparent text-2xl text-white outline-none"
+              placeholder="8"
+              min={0.1}
+              step={0.1}
+            />
           </div>
         </div>
         <button

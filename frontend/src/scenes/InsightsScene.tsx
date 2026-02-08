@@ -86,6 +86,17 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const [hoverIntensityIndex, setHoverIntensityIndex] = useState<number | null>(null);
 
   const dailyUnits = Number.isFinite(data.dailyAmount) ? Math.max(0, Number(data.dailyAmount)) : 0;
+  const mgPerUnit = Number.isFinite(data.strengthAmount) ? Math.max(0.1, Number(data.strengthAmount)) : 8;
+  const unitPricePerDay = Number.isFinite(data.unitPrice) ? Math.max(0, Number(data.unitPrice)) : 0;
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: data.unitPriceCurrency,
+        maximumFractionDigits: 2
+      }),
+    [data.unitPriceCurrency]
+  );
   const useDays = useMemo(() => {
     if (!data.durationValue) return 1;
     const value = Math.max(1, Number(data.durationValue));
@@ -95,10 +106,10 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   }, [data.durationUnit, data.durationValue]);
 
   useEffect(() => {
-    if (!plan) {
-      setPlan(buildQuitPlan({ dailyUnits, useDays, mgPerUnit: 8 }));
+    if (!plan || plan.mgPerUnit !== mgPerUnit || plan.dailyUnits !== dailyUnits || plan.useDays !== useDays) {
+      setPlan(buildQuitPlan({ dailyUnits, useDays, mgPerUnit }));
     }
-  }, [plan, dailyUnits, useDays, setPlan]);
+  }, [plan, dailyUnits, useDays, mgPerUnit, setPlan]);
 
   useEffect(() => {
     document.body.dataset.themeMode = mode;
@@ -109,7 +120,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     };
   }, [mode]);
 
-  const activePlan = plan ?? buildQuitPlan({ dailyUnits, useDays, mgPerUnit: 8 });
+  const activePlan = plan ?? buildQuitPlan({ dailyUnits, useDays, mgPerUnit });
   const { progress, dayIndex } = getJourneyProgress(activePlan);
   const summaries = useMemo(() => getInsightsSummary(journalEntries), [journalEntries]);
   const patterns = useMemo(() => getPatternInsights(journalEntries), [journalEntries]);
@@ -223,6 +234,10 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     }
     return count;
   }, [trendSeries]);
+  const moneySaved = useMemo(() => {
+    if (!unitPricePerDay || !trendSeries.length) return 0;
+    return unitPricePerDay * trendSeries.length;
+  }, [trendSeries.length, unitPricePerDay]);
 
   const chartUnlock = Math.max(0, 7 - journalEntries.length);
   const baselineUnlock =
@@ -544,8 +559,8 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
           <div className="dashboard-card metrics-card" style={{ ["--card-index" as string]: 0 }}>
             <div className="card-header">
               <div>
-                <h3>Trend direction</h3>
-                <span className="card-subtitle">Rolling windows, not daily noise</span>
+                <h3>Quick data</h3>
+                <span className="card-subtitle">Rolling windows with key snapshot metrics</span>
               </div>
               <label className="chart-view-control">
                 <span>View</span>
@@ -588,6 +603,15 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                 <span>Days with downward trend</span>
                 <strong>{trendSeries.length ? String(downwardDays) : "--"}</strong>
                 <em>{trendView === "all" ? "Across full range" : trendView === "1w" ? "Last 7 days" : "Last 30 days"}</em>
+              </div>
+              <div className="metric">
+                <span>Money saved</span>
+                <strong>{unitPricePerDay > 0 ? currencyFormatter.format(moneySaved) : "--"}</strong>
+                <em>
+                  {unitPricePerDay > 0
+                    ? `${currencyFormatter.format(unitPricePerDay)} added per day from Nicotine profile`
+                    : "Set unit price in Profile > Nicotine profile"}
+                </em>
               </div>
             </div>
           </div>

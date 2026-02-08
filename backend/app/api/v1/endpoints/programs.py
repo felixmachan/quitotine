@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.models import ProductProfile, Program, User
-from app.schemas.program import ProgramCreate, ProgramOut
+from app.schemas.program import ProductProfileCostUpdate, ProgramCreate, ProgramOut
 from app.security.dependencies import get_current_user
 
 router = APIRouter()
@@ -58,6 +58,28 @@ def get_active_program(
     )
     if not program:
         raise HTTPException(status_code=404, detail="No active program")
+    return program
+
+
+@router.patch("/active/product-profile", response_model=ProgramOut)
+def update_active_product_profile(
+    payload: ProductProfileCostUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    program = (
+        db.query(Program)
+        .filter(Program.user_id == current_user.id, Program.is_active.is_(True))
+        .first()
+    )
+    if not program:
+        raise HTTPException(status_code=404, detail="No active program")
+    if not program.product_profile:
+        raise HTTPException(status_code=404, detail="No product profile for active program")
+
+    program.product_profile.cost_per_unit = payload.cost_per_unit
+    db.commit()
+    db.refresh(program)
     return program
 
 

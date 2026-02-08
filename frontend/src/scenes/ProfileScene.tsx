@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { AuthUser, ProfileData } from "../app/types";
+import { AuthUser, OnboardingData, ProfileData, CurrencyCode } from "../app/types";
 import { useLocalStorage } from "../app/useLocalStorage";
 import AppNav from "../components/AppNav";
 
@@ -11,6 +11,7 @@ interface ProfileSceneProps {
   onLogout: () => Promise<void>;
   onAccountSave: (displayName: string) => Promise<void>;
   onPasswordChange: (password: string) => Promise<void>;
+  onNicotineProfileSave: (unitPrice: number | null, currency: CurrencyCode) => Promise<void>;
   entered?: boolean;
 }
 
@@ -26,6 +27,20 @@ const initialProfile: ProfileData = {
   tone: "soft",
   scienceDepth: "light",
   spikeIntensity: "guided"
+};
+
+const initialOnboardingData: OnboardingData = {
+  productType: "",
+  firstName: "",
+  lastName: "",
+  durationValue: null,
+  durationUnit: "years",
+  dailyAmount: null,
+  dailyUnit: "",
+  strengthAmount: 8,
+  goalType: "",
+  unitPrice: null,
+  unitPriceCurrency: "USD"
 };
 
 const TRIGGER_GROUPS = [
@@ -63,6 +78,7 @@ export default function ProfileScene({
   onLogout,
   onAccountSave,
   onPasswordChange,
+  onNicotineProfileSave,
   entered = false
 }: ProfileSceneProps) {
   const initialMode: ThemeMode =
@@ -71,6 +87,10 @@ export default function ProfileScene({
       : "light";
   const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", initialMode);
   const [profile, setProfile] = useLocalStorage<ProfileData>("quitotine:profile", initialProfile);
+  const [onboardingData, setOnboardingData] = useLocalStorage<OnboardingData>(
+    "quitotine:onboarding",
+    initialOnboardingData
+  );
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
   const [accountError, setAccountError] = useState("");
@@ -79,6 +99,12 @@ export default function ProfileScene({
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [passwordPending, setPasswordPending] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const [isEditingNicotine, setIsEditingNicotine] = useState(false);
+  const [nicotinePending, setNicotinePending] = useState(false);
+  const [nicotineSaved, setNicotineSaved] = useState(false);
+  const [nicotineError, setNicotineError] = useState("");
+  const [unitPriceDraft, setUnitPriceDraft] = useState<number | null>(onboardingData.unitPrice);
+  const [unitPriceCurrencyDraft, setUnitPriceCurrencyDraft] = useState<CurrencyCode>(onboardingData.unitPriceCurrency);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState({ next: "", confirm: "" });
   const hasMin = passwordDraft.next.length >= 8;
@@ -98,6 +124,22 @@ export default function ProfileScene({
 
   const signedInEmail = useMemo(() => authUser?.email || profile.email || "-", [authUser?.email, profile.email]);
   const signedInId = useMemo(() => authUser?.id || "-", [authUser?.id]);
+  const productLabel = useMemo(() => {
+    switch (onboardingData.productType) {
+      case "cigarette":
+        return "Cigarette";
+      case "snus":
+        return "Snus";
+      case "vape":
+        return "Vape";
+      case "chew":
+        return "Chew";
+      case "other":
+        return "Other";
+      default:
+        return "Not set";
+    }
+  }, [onboardingData.productType]);
 
   useEffect(() => {
     if (!authUser) return;
@@ -109,6 +151,29 @@ export default function ProfileScene({
   }, [authUser, setProfile]);
 
   useEffect(() => {
+    const normalized: Partial<OnboardingData> = {};
+    if (!["cigarette", "snus", "vape", "chew", "other", ""].includes(onboardingData.productType as string)) {
+      normalized.productType = "";
+    }
+    if (typeof onboardingData.dailyUnit !== "string") normalized.dailyUnit = "";
+    if (onboardingData.dailyAmount === undefined || Number.isNaN(Number(onboardingData.dailyAmount))) {
+      normalized.dailyAmount = null;
+    }
+    if (Number.isNaN(Number(onboardingData.strengthAmount)) || Number(onboardingData.strengthAmount) <= 0) {
+      normalized.strengthAmount = 8;
+    }
+    if (onboardingData.unitPrice === undefined || Number.isNaN(Number(onboardingData.unitPrice))) {
+      normalized.unitPrice = null;
+    }
+    if (!["USD", "EUR", "HUF"].includes(onboardingData.unitPriceCurrency)) {
+      normalized.unitPriceCurrency = "USD";
+    }
+    if (Object.keys(normalized).length) {
+      setOnboardingData((prev) => ({ ...prev, ...normalized }));
+    }
+  }, [onboardingData, setOnboardingData]);
+
+  useEffect(() => {
     document.body.dataset.themeMode = mode;
     return () => {
       if (document.body.dataset.themeMode === mode) {
@@ -116,6 +181,12 @@ export default function ProfileScene({
       }
     };
   }, [mode]);
+
+  useEffect(() => {
+    if (isEditingNicotine) return;
+    setUnitPriceDraft(onboardingData.unitPrice);
+    setUnitPriceCurrencyDraft(onboardingData.unitPriceCurrency);
+  }, [isEditingNicotine, onboardingData.unitPrice, onboardingData.unitPriceCurrency]);
 
   const toggleTrigger = (id: string) => {
     setProfile((prev) => ({
@@ -167,6 +238,38 @@ export default function ProfileScene({
     setPasswordError("");
     setPasswordFocused(false);
     setIsChangingPassword(false);
+  };
+
+  const handleAccountCancel = () => {
+    setIsEditingAccount(false);
+    handlePasswordCancel();
+  };
+
+  const handleNicotineCancel = () => {
+    setIsEditingNicotine(false);
+    setUnitPriceDraft(onboardingData.unitPrice);
+    setUnitPriceCurrencyDraft(onboardingData.unitPriceCurrency);
+    setNicotineError("");
+  };
+
+  const handleNicotineSave = async () => {
+    try {
+      setNicotinePending(true);
+      setNicotineError("");
+      await onNicotineProfileSave(unitPriceDraft, unitPriceCurrencyDraft);
+      setOnboardingData((prev) => ({
+        ...prev,
+        unitPrice: unitPriceDraft,
+        unitPriceCurrency: unitPriceCurrencyDraft
+      }));
+      setIsEditingNicotine(false);
+      setNicotineSaved(true);
+      window.setTimeout(() => setNicotineSaved(false), 5000);
+    } catch (error) {
+      setNicotineError(error instanceof Error ? error.message : "Failed to save nicotine profile.");
+    } finally {
+      setNicotinePending(false);
+    }
   };
 
   return (
@@ -227,14 +330,27 @@ export default function ProfileScene({
                   </div>
                 </div>
                 <div className="profile-actions">
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => setIsEditingAccount(true)}
-                    disabled={isEditingAccount}
-                  >
-                    Edit profile
-                  </button>
+                  {!isEditingAccount ? (
+                    <button type="button" className="ghost-button" onClick={() => setIsEditingAccount(true)}>
+                      Edit profile
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" className="ghost-button" onClick={handleAccountCancel}>
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        onClick={() => {
+                          setPasswordError("");
+                          setIsChangingPassword(true);
+                        }}
+                      >
+                        Change password
+                      </button>
+                    </>
+                  )}
                   <button type="button" className="ghost-button" onClick={handleLogout}>
                     Log out
                   </button>
@@ -245,30 +361,6 @@ export default function ProfileScene({
                   ) : null}
                   {accountSaved ? <span className="profile-saved">Account info saved</span> : null}
                   {accountError ? <span className="profile-saved">{accountError}</span> : null}
-                </div>
-              </div>
-
-              <div
-                className="dashboard-card profile-card profile-card--account profile-card--security"
-                style={{ ["--card-index" as string]: 1 }}
-              >
-                <div className="card-header">
-                  <h3>Security</h3>
-                  <span className="card-subtitle">Password</span>
-                </div>
-                <div className="profile-actions">
-                  {!isChangingPassword ? (
-                    <button
-                      type="button"
-                      className="ghost-button"
-                      onClick={() => {
-                        setPasswordError("");
-                        setIsChangingPassword(true);
-                      }}
-                    >
-                      Change password
-                    </button>
-                  ) : null}
                   {passwordSaved ? <span className="profile-saved">Password saved</span> : null}
                   {passwordError ? <span className="profile-saved">{passwordError}</span> : null}
                 </div>
@@ -345,14 +437,89 @@ export default function ProfileScene({
                       >
                         {passwordPending ? "Saving..." : "Save"}
                       </button>
-                      <button type="button" className="ghost-button" onClick={handlePasswordCancel}>
-                        Cancel
-                      </button>
                     </div>
                   </div>
                 ) : null}
               </div>
 
+              <div
+                className="dashboard-card profile-card profile-card--account profile-card--nicotine"
+                style={{ ["--card-index" as string]: 1 }}
+              >
+                <div className="card-header">
+                  <h3>Nicotine profile</h3>
+                  <span className="card-subtitle">Onboarding baseline and savings input</span>
+                </div>
+                <div className="profile-field-grid">
+                  <div className="profile-field">
+                    <label>Product</label>
+                    <div className="profile-static">{productLabel}</div>
+                  </div>
+                  <div className="profile-field">
+                    <label>Daily baseline amount</label>
+                    <div className="profile-static">
+                      {onboardingData.dailyAmount != null
+                        ? `${onboardingData.dailyAmount} ${onboardingData.dailyUnit || ""}`.trim()
+                        : "-"}
+                    </div>
+                  </div>
+                  <div className="profile-field">
+                    <label>Strength</label>
+                    <div className="profile-static">{onboardingData.strengthAmount} mg</div>
+                  </div>
+                  <div className="profile-field">
+                    <label htmlFor="profile-unit-price">Unit price (optional)</label>
+                    <div className="profile-inline">
+                      <input
+                        id="profile-unit-price"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={unitPriceDraft ?? ""}
+                        onChange={(event) => setUnitPriceDraft(event.target.value === "" ? null : Number(event.target.value))}
+                        placeholder="Price per day"
+                        disabled={!isEditingNicotine}
+                      />
+                      <select
+                        value={unitPriceCurrencyDraft}
+                        onChange={(event) => setUnitPriceCurrencyDraft(event.target.value as CurrencyCode)}
+                        aria-label="Currency"
+                        disabled={!isEditingNicotine}
+                      >
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                        <option value="HUF">HUF</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="profile-actions">
+                  {!isEditingNicotine ? (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => {
+                        setNicotineSaved(false);
+                        setNicotineError("");
+                        setIsEditingNicotine(true);
+                      }}
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" className="ghost-button" onClick={handleNicotineCancel}>
+                        Cancel
+                      </button>
+                      <button type="button" className="primary-button" onClick={() => void handleNicotineSave()} disabled={nicotinePending}>
+                        {nicotinePending ? "Saving..." : "Save"}
+                      </button>
+                    </>
+                  )}
+                  {nicotineSaved ? <span className="profile-saved">Nicotine profile saved</span> : null}
+                  {nicotineError ? <span className="profile-saved">{nicotineError}</span> : null}
+                </div>
+              </div>
             </div>
           </section>
 
@@ -363,7 +530,7 @@ export default function ProfileScene({
               <p className="profile-section__note">Identity, triggers, and preferences.</p>
             </div>
             <div className="dashboard-grid profile-grid">
-              <div className="dashboard-card profile-card" style={{ ["--card-index" as string]: 0 }}>
+              <div className="dashboard-card profile-card--identity" style={{ ["--card-index" as string]: 0 }}>
                 <div className="card-header">
                   <h3>Identity & reasons</h3>
                   <span className="card-subtitle">Ground the non-user identity</span>
