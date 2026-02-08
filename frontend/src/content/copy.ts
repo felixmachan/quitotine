@@ -15,8 +15,7 @@
     startDate: "Your start date"
   },
   summaryTitle: "Your starting point",
-  summaryButton: "Continue",
-  skip: "Skip",
+  summaryButton: "Continue"
 };
 
 export const productOptions = [

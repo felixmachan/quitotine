@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { AuthUser, OnboardingData, ProfileData, CurrencyCode } from "../app/types";
+import { AuthTokens, AuthUser, OnboardingData, ProfileData, CurrencyCode } from "../app/types";
 import { useLocalStorage } from "../app/useLocalStorage";
+import { type QuitPlan } from "../app/quitLogic";
 import AppNav from "../components/AppNav";
 
 interface ProfileSceneProps {
@@ -11,11 +12,31 @@ interface ProfileSceneProps {
   onLogout: () => Promise<void>;
   onAccountSave: (displayName: string) => Promise<void>;
   onPasswordChange: (password: string) => Promise<void>;
-  onNicotineProfileSave: (unitPrice: number | null, currency: CurrencyCode) => Promise<void>;
+  onNicotineProfileSave: (
+    unitPrice: number | null,
+    currency: CurrencyCode,
+    unit: string,
+    piecesPerBox: number | null,
+    dailyAmount: number | null
+  ) => Promise<void>;
   entered?: boolean;
 }
 
 type ThemeMode = "dark" | "light";
+
+interface TestSeedCravingResponse {
+  occurred_at: string;
+  intensity: number;
+}
+
+interface TestSeedDayResponse {
+  date: string;
+  mood: number;
+  note: string;
+  craving_count: number;
+  cravings: TestSeedCravingResponse[];
+}
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 const initialProfile: ProfileData = {
   displayName: "",
@@ -37,6 +58,7 @@ const initialOnboardingData: OnboardingData = {
   durationUnit: "years",
   dailyAmount: null,
   dailyUnit: "",
+  piecesPerBox: null,
   strengthAmount: 8,
   goalType: "",
   unitPrice: null,
@@ -87,10 +109,12 @@ export default function ProfileScene({
       : "light";
   const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", initialMode);
   const [profile, setProfile] = useLocalStorage<ProfileData>("quitotine:profile", initialProfile);
+  const [authTokens] = useLocalStorage<AuthTokens | null>("quitotine:authTokens", null);
   const [onboardingData, setOnboardingData] = useLocalStorage<OnboardingData>(
     "quitotine:onboarding",
     initialOnboardingData
   );
+  const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
   const [accountError, setAccountError] = useState("");
@@ -104,8 +128,12 @@ export default function ProfileScene({
   const [nicotineSaved, setNicotineSaved] = useState(false);
   const [nicotineError, setNicotineError] = useState("");
   const [unitPriceDraft, setUnitPriceDraft] = useState<number | null>(onboardingData.unitPrice);
+  const [dailyAmountDraft, setDailyAmountDraft] = useState<number | null>(onboardingData.dailyAmount);
+  const [dailyUnitDraft, setDailyUnitDraft] = useState<string>(onboardingData.dailyUnit || "pieces");
+  const [piecesPerBoxDraft, setPiecesPerBoxDraft] = useState<number | null>(onboardingData.piecesPerBox);
   const [unitPriceCurrencyDraft, setUnitPriceCurrencyDraft] = useState<CurrencyCode>(onboardingData.unitPriceCurrency);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [testActionMessage, setTestActionMessage] = useState("");
   const [passwordDraft, setPasswordDraft] = useState({ next: "", confirm: "" });
   const hasMin = passwordDraft.next.length >= 8;
   const hasUpper = /[A-Z]/.test(passwordDraft.next);
@@ -121,6 +149,10 @@ export default function ProfileScene({
   ];
   const isPasswordValid = passwordRules.every((rule) => rule.ok);
   const passwordsMismatch = passwordDraft.confirm.length > 0 && passwordDraft.next !== passwordDraft.confirm;
+  const isTestOrDevelopmentEnvironment = String(import.meta.env.VITE_ENVIRONMENT ?? import.meta.env.environment ?? "")
+    .trim()
+    .toLowerCase()
+    .match(/^(test|development)$/) !== null;
 
   const signedInEmail = useMemo(() => authUser?.email || profile.email || "-", [authUser?.email, profile.email]);
   const signedInId = useMemo(() => authUser?.id || "-", [authUser?.id]);
@@ -156,6 +188,9 @@ export default function ProfileScene({
       normalized.productType = "";
     }
     if (typeof onboardingData.dailyUnit !== "string") normalized.dailyUnit = "";
+    if (onboardingData.piecesPerBox === undefined || Number.isNaN(Number(onboardingData.piecesPerBox))) {
+      normalized.piecesPerBox = null;
+    }
     if (onboardingData.dailyAmount === undefined || Number.isNaN(Number(onboardingData.dailyAmount))) {
       normalized.dailyAmount = null;
     }
@@ -184,9 +219,19 @@ export default function ProfileScene({
 
   useEffect(() => {
     if (isEditingNicotine) return;
+    setDailyAmountDraft(onboardingData.dailyAmount);
+    setDailyUnitDraft(onboardingData.dailyUnit || "pieces");
     setUnitPriceDraft(onboardingData.unitPrice);
+    setPiecesPerBoxDraft(onboardingData.piecesPerBox);
     setUnitPriceCurrencyDraft(onboardingData.unitPriceCurrency);
-  }, [isEditingNicotine, onboardingData.unitPrice, onboardingData.unitPriceCurrency]);
+  }, [
+    isEditingNicotine,
+    onboardingData.dailyAmount,
+    onboardingData.dailyUnit,
+    onboardingData.piecesPerBox,
+    onboardingData.unitPrice,
+    onboardingData.unitPriceCurrency
+  ]);
 
   const toggleTrigger = (id: string) => {
     setProfile((prev) => ({
@@ -247,7 +292,10 @@ export default function ProfileScene({
 
   const handleNicotineCancel = () => {
     setIsEditingNicotine(false);
+    setDailyAmountDraft(onboardingData.dailyAmount);
+    setDailyUnitDraft(onboardingData.dailyUnit || "pieces");
     setUnitPriceDraft(onboardingData.unitPrice);
+    setPiecesPerBoxDraft(onboardingData.piecesPerBox);
     setUnitPriceCurrencyDraft(onboardingData.unitPriceCurrency);
     setNicotineError("");
   };
@@ -256,9 +304,18 @@ export default function ProfileScene({
     try {
       setNicotinePending(true);
       setNicotineError("");
-      await onNicotineProfileSave(unitPriceDraft, unitPriceCurrencyDraft);
+      await onNicotineProfileSave(
+        unitPriceDraft,
+        unitPriceCurrencyDraft,
+        dailyUnitDraft,
+        piecesPerBoxDraft,
+        dailyAmountDraft
+      );
       setOnboardingData((prev) => ({
         ...prev,
+        dailyAmount: dailyAmountDraft,
+        dailyUnit: dailyUnitDraft,
+        piecesPerBox: piecesPerBoxDraft,
         unitPrice: unitPriceDraft,
         unitPriceCurrency: unitPriceCurrencyDraft
       }));
@@ -270,6 +327,95 @@ export default function ProfileScene({
     } finally {
       setNicotinePending(false);
     }
+  };
+
+  const addRandomTestDay = async () => {
+    if (!plan) {
+      setTestActionMessage("No plan found. Complete onboarding first.");
+      return;
+    }
+    if (!authTokens?.accessToken) {
+      setTestActionMessage("You need to be logged in to seed backend test data.");
+      return;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}/programs/active/test/seed-random-day`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authTokens.accessToken}`
+        }
+      });
+    } catch {
+      setTestActionMessage("Failed to reach backend test endpoint.");
+      return;
+    }
+
+    if (!response.ok) {
+      setTestActionMessage(`Seed failed (HTTP ${response.status}). Check environment and active program.`);
+      return;
+    }
+
+    const payload = (await response.json()) as TestSeedDayResponse;
+    const date = payload.date;
+    const mood = payload.mood;
+    const cravingCount = payload.craving_count;
+
+    setPlan((prev) =>
+      prev
+        ? {
+            ...prev,
+            progressOffsetDays: prev.progressOffsetDays - 1
+          }
+        : prev
+    );
+
+    setTestActionMessage(
+      `Added random backend day for ${date}: mood ${mood}, cravings ${cravingCount}. Progress advanced by 1 day.`
+    );
+  };
+
+  const resetProgressForTest = async () => {
+    if (!plan) {
+      setTestActionMessage("No plan found.");
+      return;
+    }
+    if (!authTokens?.accessToken) {
+      setTestActionMessage("You need to be logged in to reset backend data.");
+      return;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}/programs/active/test/reset-progress`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authTokens.accessToken}`
+        }
+      });
+    } catch {
+      setTestActionMessage("Failed to reach backend reset endpoint.");
+      return;
+    }
+
+    if (!response.ok) {
+      setTestActionMessage(`Reset failed (HTTP ${response.status}). Check environment and active program.`);
+      return;
+    }
+
+    setPlan((prev) =>
+      prev
+        ? {
+            ...prev,
+            startDate: new Date().toISOString(),
+            progressOffsetDays: 0
+          }
+        : prev
+    );
+    setTestActionMessage("Progress reset to day 1. Backend and local logs cleared.");
   };
 
   return (
@@ -457,10 +603,31 @@ export default function ProfileScene({
                   </div>
                   <div className="profile-field">
                     <label>Daily baseline amount</label>
-                    <div className="profile-static">
-                      {onboardingData.dailyAmount != null
-                        ? `${onboardingData.dailyAmount} ${onboardingData.dailyUnit || ""}`.trim()
-                        : "-"}
+                    <div className="profile-inline">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={dailyAmountDraft ?? ""}
+                        onChange={(event) => setDailyAmountDraft(event.target.value === "" ? null : Number(event.target.value))}
+                        placeholder="0"
+                        disabled={!isEditingNicotine}
+                      />
+                      <select
+                        value={dailyUnitDraft || "pieces"}
+                        onChange={(event) => {
+                          const nextUnit = event.target.value;
+                          setDailyUnitDraft(nextUnit);
+                          if (nextUnit !== "pieces") {
+                            setPiecesPerBoxDraft(null);
+                          }
+                        }}
+                        aria-label="Daily unit"
+                        disabled={!isEditingNicotine}
+                      >
+                        <option value="pieces">pieces/day</option>
+                        <option value="box">box/day</option>
+                      </select>
                     </div>
                   </div>
                   <div className="profile-field">
@@ -468,7 +635,21 @@ export default function ProfileScene({
                     <div className="profile-static">{onboardingData.strengthAmount} mg</div>
                   </div>
                   <div className="profile-field">
-                    <label htmlFor="profile-unit-price">Unit price (optional)</label>
+                    <label htmlFor="profile-pieces-per-box">Pieces per box</label>
+                    <input
+                      id="profile-pieces-per-box"
+                      type="number"
+                      min={1}
+                      value={piecesPerBoxDraft ?? ""}
+                      onChange={(event) =>
+                        setPiecesPerBoxDraft(event.target.value === "" ? null : Number(event.target.value))
+                      }
+                      placeholder="20"
+                      disabled={!isEditingNicotine || dailyUnitDraft !== "pieces"}
+                    />
+                  </div>
+                  <div className="profile-field">
+                    <label htmlFor="profile-unit-price">Price per box (optional)</label>
                     <div className="profile-inline">
                       <input
                         id="profile-unit-price"
@@ -477,7 +658,7 @@ export default function ProfileScene({
                         step="0.01"
                         value={unitPriceDraft ?? ""}
                         onChange={(event) => setUnitPriceDraft(event.target.value === "" ? null : Number(event.target.value))}
-                        placeholder="Price per day"
+                        placeholder="Price per box"
                         disabled={!isEditingNicotine}
                       />
                       <select
@@ -645,6 +826,33 @@ export default function ProfileScene({
               </div>
             </div>
           </section>
+
+          {isTestOrDevelopmentEnvironment ? (
+            <section className="profile-section" aria-labelledby="test-tools-title">
+              <div className="profile-section__header">
+                <p className="profile-section__kicker">Testing</p>
+                <h2 id="test-tools-title">Test tools</h2>
+                <p className="profile-section__note">Only visible in test environment.</p>
+              </div>
+              <div className="dashboard-grid profile-grid">
+                <div className="dashboard-card profile-card" style={{ ["--card-index" as string]: 0 }}>
+                  <div className="card-header">
+                    <h3>Progress simulator</h3>
+                    <span className="card-subtitle">Local test utilities</span>
+                  </div>
+                  <div className="profile-actions">
+                    <button type="button" className="ghost-button" onClick={() => void addRandomTestDay()}>
+                      +1 random day
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => void resetProgressForTest()}>
+                      Reset progress
+                    </button>
+                  </div>
+                  {testActionMessage ? <span className="profile-saved">{testActionMessage}</span> : null}
+                </div>
+              </div>
+            </section>
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import AppNav from "../components/AppNav";
 import { useLocalStorage } from "../app/useLocalStorage";
-import type { JournalEntry } from "../app/quitLogic";
+import { toIsoDate, type JournalEntry } from "../app/quitLogic";
+import { AuthTokens } from "../app/types";
 
 interface DiarySceneProps {
   activeRoute: string;
@@ -10,15 +11,66 @@ interface DiarySceneProps {
 }
 
 type ThemeMode = "dark" | "light";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export default function DiaryScene({ activeRoute, onNavigate, entered = false }: DiarySceneProps) {
-  const [journalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [authTokens] = useLocalStorage<AuthTokens | null>("quitotine:authTokens", null);
   const initialMode: ThemeMode =
     typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";
   const [mode, setMode] = useLocalStorage<ThemeMode>("quitotine:mode", initialMode);
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!authTokens?.accessToken) return;
+    const end = new Date();
+    const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}&end=${encodeURIComponent(
+      toIsoDate(end)
+    )}`;
+    const cravingsUrl = `${API_BASE}/events?event_type=craving&start=${encodeURIComponent(
+      start.toISOString()
+    )}&end=${encodeURIComponent(end.toISOString())}`;
+
+    void (async () => {
+      try {
+        const [diaryResponse, cravingsResponse] = await Promise.all([
+          fetch(diaryUrl, { headers: { Authorization: `Bearer ${authTokens.accessToken}` } }),
+          fetch(cravingsUrl, { headers: { Authorization: `Bearer ${authTokens.accessToken}` } })
+        ]);
+        if (!diaryResponse.ok || !cravingsResponse.ok) return;
+        const diaryRows = (await diaryResponse.json()) as Array<{
+          entry_date: string;
+          mood: number;
+          note: string | null;
+          created_at: string;
+        }>;
+        const cravingRows = (await cravingsResponse.json()) as Array<{
+          occurred_at: string;
+        }>;
+
+        const cravingsByDate = new Map<string, number>();
+        cravingRows.forEach((row) => {
+          const key = toIsoDate(new Date(row.occurred_at));
+          cravingsByDate.set(key, (cravingsByDate.get(key) ?? 0) + 1);
+        });
+
+        setJournalEntries(
+          diaryRows.map((row) => ({
+            date: row.entry_date,
+            mood: row.mood,
+            note: row.note ?? "",
+            createdAt: row.created_at,
+            cravings: cravingsByDate.get(row.entry_date) ?? 0
+          }))
+        );
+      } catch {
+        // Ignore transient fetch failures in the view.
+      }
+    })();
+  }, [authTokens?.accessToken]);
 
   const formatDay = (isoDate: string) => {
     const date = new Date(`${isoDate}T00:00:00`);

@@ -44,3 +44,23 @@ class ProgramOut(BaseModel):
     is_active: bool
     ended_at: datetime | None
     product_profile: ProductProfileOut
+
+
+class TestCravingOut(BaseModel):
+    occurred_at: datetime
+    intensity: int
+
+
+class TestSeedDayOut(BaseModel):
+    date: str
+    mood: int
+    note: str
+    craving_count: int
+    cravings: list[TestCravingOut]
+
+
+class TestResetOut(BaseModel):
+    ok: bool
+    deleted_diary_entries: int
+    deleted_events: int
+    started_at: datetime

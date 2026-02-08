@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { OnboardingData } from "../app/types";
+import { AuthTokens, OnboardingData } from "../app/types";
 import { useLocalStorage } from "../app/useLocalStorage";
 import {
   buildQuitPlan,
@@ -7,8 +7,7 @@ import {
   getJourneyProgress,
   toIsoDate,
   type JournalEntry,
-  type QuitPlan,
-  type RelapseEvent
+  type QuitPlan
 } from "../app/quitLogic";
 import { getAdaptiveSignal, getMilestones, getSpikeReframe } from "../app/personalization";
 import AppNav from "../components/AppNav";
@@ -34,10 +33,21 @@ interface FutureMessage {
   createdAt: string;
 }
 
+interface CravingLog {
+  date: string;
+  hour: number;
+  intensity: number;
+  source: "journal" | "backend";
+  createdAt: string;
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+
 export default function DashboardScene({ data, activeRoute, onNavigate, entered = false }: DashboardSceneProps) {
   const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
-  const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
-  const [, setRelapseLog] = useLocalStorage<RelapseEvent[]>("quitotine:relapse", []);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [cravingLogs, setCravingLogs] = useState<CravingLog[]>([]);
+  const [authTokens] = useLocalStorage<AuthTokens | null>("quitotine:authTokens", null);
   const initialMode: ThemeMode =
     typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
@@ -70,6 +80,71 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
     }
   }, [plan, dailyUnits, useDays, mgPerUnit, setPlan]);
 
+  useEffect(() => {
+    if (!authTokens?.accessToken) return;
+    const end = new Date();
+    const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
+
+    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}&end=${encodeURIComponent(
+      toIsoDate(end)
+    )}`;
+    const cravingsUrl = `${API_BASE}/events?event_type=craving&start=${encodeURIComponent(
+      start.toISOString()
+    )}&end=${encodeURIComponent(end.toISOString())}`;
+
+    void (async () => {
+      try {
+        const [diaryResponse, cravingsResponse] = await Promise.all([
+          fetch(diaryUrl, { headers: { Authorization: `Bearer ${authTokens.accessToken}` } }),
+          fetch(cravingsUrl, { headers: { Authorization: `Bearer ${authTokens.accessToken}` } })
+        ]);
+        if (!diaryResponse.ok || !cravingsResponse.ok) return;
+
+        const diaryRows = (await diaryResponse.json()) as Array<{
+          entry_date: string;
+          mood: number;
+          note: string | null;
+          created_at: string;
+        }>;
+        const cravingRows = (await cravingsResponse.json()) as Array<{
+          intensity: number | null;
+          occurred_at: string;
+        }>;
+
+        const cravingsByDate = new Map<string, number>();
+        const mappedCravingLogs: CravingLog[] = cravingRows
+          .filter((row) => row.intensity != null)
+          .map((row) => {
+            const dt = new Date(row.occurred_at);
+            const date = toIsoDate(dt);
+            cravingsByDate.set(date, (cravingsByDate.get(date) ?? 0) + 1);
+            return {
+              date,
+              hour: dt.getHours(),
+              intensity: Math.max(1, row.intensity ?? 1),
+              source: "backend",
+              createdAt: row.occurred_at
+            };
+          });
+
+        const mappedJournal: JournalEntry[] = diaryRows
+          .map((row) => ({
+            date: row.entry_date,
+            mood: row.mood,
+            cravings: cravingsByDate.get(row.entry_date) ?? 0,
+            note: row.note ?? "",
+            createdAt: row.created_at
+          }))
+          .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+        setJournalEntries(mappedJournal);
+        setCravingLogs(mappedCravingLogs);
+      } catch {
+        // Keep the current in-memory values on transient failures.
+      }
+    })();
+  }, [authTokens?.accessToken]);
+
   const activePlan = plan ?? buildQuitPlan({ dailyUnits, useDays, mgPerUnit });
   const { dayIndex, progress } = getJourneyProgress(activePlan);
 
@@ -97,16 +172,27 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
     };
   }, [progress]);
 
-  const handleRelapseConfirm = () => {
+  const handleRelapseConfirm = async () => {
     const penaltyDays = computePenaltyDays(activePlan.baselineMgPerDay, progress);
-    const event: RelapseEvent = {
-      id: `relapse-${Date.now()}`,
-      date: new Date().toISOString(),
-      penaltyDays,
-      note: relapseNote.trim(),
-      tags: relapseTags
-    };
-    setRelapseLog((prev) => [event, ...prev]);
+    if (authTokens?.accessToken) {
+      try {
+        await fetch(`${API_BASE}/events`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authTokens.accessToken}`
+          },
+          body: JSON.stringify({
+            event_type: "relapse",
+            amount: 1,
+            notes: [relapseNote.trim(), ...relapseTags].filter(Boolean).join(" | "),
+            occurred_at: new Date().toISOString()
+          })
+        });
+      } catch {
+        // Keep local UI behavior even if event sync fails.
+      }
+    }
     setPlan((prev) =>
       prev
         ? {
@@ -121,10 +207,38 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
     window.setTimeout(() => setRelapsePulse(false), 900);
   };
 
-  const handleJournalSave = (entry: JournalEntry) => {
+  const handleJournalSave = async (entry: JournalEntry) => {
+    if (!authTokens?.accessToken) return;
+    const response = await fetch(`${API_BASE}/diary`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authTokens.accessToken}`
+      },
+      body: JSON.stringify({
+        mood: entry.mood,
+        note: entry.note || null
+      })
+    });
+    if (!response.ok) return;
+    const created = (await response.json()) as {
+      entry_date: string;
+      mood: number;
+      note: string | null;
+      created_at: string;
+    };
     setJournalEntries((prev) => {
-      const next = prev.filter((item) => item.date !== entry.date);
-      return [entry, ...next];
+      const next = prev.filter((item) => item.date !== created.entry_date);
+      return [
+        {
+          date: created.entry_date,
+          mood: created.mood,
+          cravings: cravingLogs.filter((log) => log.date === created.entry_date).length,
+          note: created.note ?? "",
+          createdAt: created.created_at
+        },
+        ...next
+      ];
     });
   };
 

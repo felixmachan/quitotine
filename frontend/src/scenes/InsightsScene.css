@@ -396,6 +396,78 @@
   z-index: 1;
 }
 
+.cravings-by-mood-card {
+  grid-column: 1 / -1;
+}
+
+.chart-line--wide {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1460 / 340;
+}
+
+.chart-line--mood-correlation {
+  width: 100%;
+}
+
+.chart-area--mood-intensity {
+  fill: rgba(248, 98, 126, 0.16);
+}
+
+.chart-area--mood-count {
+  fill: rgba(96, 152, 255, 0.14);
+}
+
+.chart-polyline--mood-intensity {
+  stroke: rgba(248, 98, 126, 0.98);
+  stroke-width: 2.8;
+  fill: none;
+}
+
+.chart-polyline--mood-count {
+  stroke: rgba(96, 152, 255, 0.98);
+  stroke-width: 2.8;
+  fill: none;
+}
+
+.chart-point--mood-intensity {
+  fill: rgba(248, 98, 126, 0.98);
+}
+
+.chart-point--mood-count {
+  fill: rgba(96, 152, 255, 0.98);
+}
+
+.series-legend {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  color: rgba(220, 248, 248, 0.8);
+  font-size: 0.82rem;
+}
+
+.series-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.series-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.series-dot--intensity {
+  background: rgba(248, 98, 126, 0.98);
+}
+
+.series-dot--count {
+  background: rgba(96, 152, 255, 0.98);
+}
+
 .interpretation-line {
   margin: 0;
   color: rgba(220, 248, 248, 0.8);
@@ -540,6 +612,22 @@
   stroke: rgba(232, 132, 58, 0.94);
 }
 
+.dashboard-shell[data-theme-mode="light"] .chart-polyline--mood-intensity {
+  stroke: rgba(220, 78, 108, 0.98);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-polyline--mood-count {
+  stroke: rgba(66, 124, 238, 0.98);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-area--mood-intensity {
+  fill: rgba(220, 78, 108, 0.14);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-area--mood-count {
+  fill: rgba(66, 124, 238, 0.12);
+}
+
 .dashboard-shell[data-theme-mode="light"] .chart-point {
   fill: rgba(70, 200, 190, 0.98);
   stroke: rgba(12, 24, 30, 0.22);
@@ -551,6 +639,14 @@
 
 .dashboard-shell[data-theme-mode="light"] .chart-point--intensity {
   fill: rgba(232, 132, 58, 0.95);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-point--mood-intensity {
+  fill: rgba(220, 78, 108, 0.98);
+}
+
+.dashboard-shell[data-theme-mode="light"] .chart-point--mood-count {
+  fill: rgba(66, 124, 238, 0.98);
 }
 
 .dashboard-shell[data-theme-mode="light"] .heatmap-col-head {
@@ -613,4 +709,8 @@
 
 .dashboard-shell[data-theme-mode="light"] .time-bar::after {
   background: rgba(70, 200, 190, 0.2);
+}
+
+.dashboard-shell[data-theme-mode="light"] .series-legend {
+  color: rgba(12, 24, 30, 0.8);
 }

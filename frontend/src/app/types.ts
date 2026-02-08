@@ -10,6 +10,7 @@ export interface OnboardingData {
   durationUnit: "years" | "months" | "weeks";
   dailyAmount: number | null;
   dailyUnit: string;
+  piecesPerBox: number | null;
   strengthAmount: number;
   goalType: GoalType | "";
   unitPrice: number | null;

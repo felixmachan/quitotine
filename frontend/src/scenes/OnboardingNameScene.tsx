@@ -37,12 +37,6 @@ export default function OnboardingNameScene({
             className="focus-ring h-16 w-full rounded-[24px] border border-white/10 bg-white/5 px-6 text-xl text-white placeholder:text-white/40"
           />
         </div>
-        <button
-          type="button"
-          className="focus-ring mt-8 text-sm text-white/50 underline-offset-4 hover:text-white"
-        >
-          {copy.skip}
-        </button>
       </div>
     </StickySection>
   );

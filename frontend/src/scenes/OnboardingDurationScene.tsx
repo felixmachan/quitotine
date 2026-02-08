@@ -50,12 +50,6 @@ export default function OnboardingDurationScene({
             />
           </div>
         </div>
-        <button
-          type="button"
-          className="focus-ring mt-8 text-sm text-white/50 underline-offset-4 hover:text-white"
-        >
-          {copy.skip}
-        </button>
       </div>
     </StickySection>
   );

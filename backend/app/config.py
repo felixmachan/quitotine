@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     app_name: str = "quitotine"
     api_prefix: str = "/api/v1"
+    environment: str = "development"
 
     database_url: str = "postgresql+psycopg2://quitotine:quitotine@localhost:5432/quitotine"
     secret_key: str = "dev-secret-change"

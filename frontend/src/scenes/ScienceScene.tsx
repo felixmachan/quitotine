@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import AppNav from "../components/AppNav";
 import { useLocalStorage } from "../app/useLocalStorage";
-import { buildQuitPlan, getJourneyProgress, type JournalEntry, type QuitPlan } from "../app/quitLogic";
-import { OnboardingData } from "../app/types";
+import { buildQuitPlan, getJourneyProgress, toIsoDate, type JournalEntry, type QuitPlan } from "../app/quitLogic";
+import { AuthTokens, OnboardingData } from "../app/types";
 
 interface ScienceSceneProps {
   activeRoute: string;
@@ -12,6 +12,7 @@ interface ScienceSceneProps {
 
 type ThemeMode = "dark" | "light";
 type ScienceLayer = "applied" | "library";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 interface EvidenceArticle {
   id: string;
@@ -172,13 +173,15 @@ export default function ScienceScene({ activeRoute, onNavigate, entered = false 
     durationUnit: "years",
     dailyAmount: null,
     dailyUnit: "",
+    piecesPerBox: null,
     strengthAmount: 8,
     goalType: "",
     unitPrice: null,
     unitPriceCurrency: "USD"
   });
   const [plan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
-  const [journalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
+  const [authTokens] = useLocalStorage<AuthTokens | null>("quitotine:authTokens", null);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
 
   useEffect(() => {
     document.body.dataset.themeMode = mode;
@@ -188,6 +191,38 @@ export default function ScienceScene({ activeRoute, onNavigate, entered = false 
       }
     };
   }, [mode]);
+
+  useEffect(() => {
+    if (!authTokens?.accessToken) return;
+    const end = new Date();
+    const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}&end=${encodeURIComponent(
+      toIsoDate(end)
+    )}`;
+    void (async () => {
+      try {
+        const response = await fetch(diaryUrl, { headers: { Authorization: `Bearer ${authTokens.accessToken}` } });
+        if (!response.ok) return;
+        const rows = (await response.json()) as Array<{
+          entry_date: string;
+          mood: number;
+          note: string | null;
+          created_at: string;
+        }>;
+        setJournalEntries(
+          rows.map((row) => ({
+            date: row.entry_date,
+            mood: row.mood,
+            cravings: 0,
+            note: row.note ?? "",
+            createdAt: row.created_at
+          }))
+        );
+      } catch {
+        // Ignore transient fetch failures.
+      }
+    })();
+  }, [authTokens?.accessToken]);
 
   const activePlan = useMemo(() => {
     if (plan) return plan;

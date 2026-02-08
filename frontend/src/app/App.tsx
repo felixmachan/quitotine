@@ -22,7 +22,6 @@ import ProgressRail from "../components/ProgressRail";
 import { AuthTokens, AuthUser, CurrencyCode, OnboardingData } from "./types";
 import { useLocalStorage } from "./useLocalStorage";
 import { useThemeStage } from "./useThemeStage";
-import { buildQuitPlan, toIsoDate, type JournalEntry } from "./quitLogic";
 
 const initialData: OnboardingData = {
   productType: "",
@@ -32,6 +31,7 @@ const initialData: OnboardingData = {
   durationUnit: "years",
   dailyAmount: null,
   dailyUnit: "",
+  piecesPerBox: null,
   strengthAmount: 8,
   goalType: "",
   unitPrice: null,
@@ -51,17 +51,7 @@ type ApiErrorBody = {
   message?: string;
 };
 
-type CravingLog = {
-  date: string;
-  hour: number;
-  intensity: number;
-  source: "journal" | "backend";
-  createdAt: string;
-};
-
-const MS_PER_DAY = 86_400_000;
-
-const clampInt = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(value)));
+const LEGACY_DAILY_UNITS = new Set(["cigarette", "snus", "puff", "ml", "portion", "grams", "unit"]);
 
 export default function App() {
   const [data, setData] = useLocalStorage<OnboardingData>("quitotine:onboarding", initialData);
@@ -80,9 +70,6 @@ export default function App() {
   const overlayMsValue = Number.isFinite(overlayMs) && overlayMs > 0 ? overlayMs : undefined;
   const holdMs = Number(import.meta.env.VITE_COMMIT_HOLD_MS);
   const holdMsValue = Number.isFinite(holdMs) && holdMs > 0 ? holdMs : undefined;
-  const isTestEnvironment = String(import.meta.env.VITE_ENVIRONMENT ?? import.meta.env.environment ?? "")
-    .trim()
-    .toLowerCase() === "test";
   const sections = useMemo(
     () => [
       "hero",
@@ -176,6 +163,20 @@ export default function App() {
     }
     if (data.dailyAmount != null && Number.isNaN(Number(data.dailyAmount))) {
       normalized.dailyAmount = null;
+    }
+    if (typeof data.dailyUnit !== "string") {
+      normalized.dailyUnit = "pieces";
+    } else if (data.dailyUnit === "") {
+      normalized.dailyUnit = "pieces";
+    } else if (LEGACY_DAILY_UNITS.has(data.dailyUnit)) {
+      normalized.dailyUnit = "pieces";
+    } else if (!["pieces", "box"].includes(data.dailyUnit)) {
+      normalized.dailyUnit = "pieces";
+    }
+    if (data.piecesPerBox === undefined) {
+      normalized.piecesPerBox = null;
+    } else if (data.piecesPerBox != null && (Number.isNaN(Number(data.piecesPerBox)) || Number(data.piecesPerBox) <= 0)) {
+      normalized.piecesPerBox = null;
     }
     if (Number.isNaN(Number(data.strengthAmount)) || Number(data.strengthAmount) <= 0) {
       normalized.strengthAmount = 8;
@@ -330,70 +331,6 @@ export default function App() {
     await authenticate("/auth/register", registration.email, registration.password);
   };
 
-  const seedDummyInsightsData = () => {
-    const now = new Date();
-    const startDate = new Date(now.getTime() - 29 * MS_PER_DAY);
-    startDate.setHours(9, 0, 0, 0);
-
-    const dailyUnits = Number.isFinite(data.dailyAmount) ? Math.max(0, Number(data.dailyAmount)) : 0;
-    const useDays = (() => {
-      if (!data.durationValue) return 30;
-      const value = Math.max(1, Number(data.durationValue));
-      if (data.durationUnit === "weeks") return Math.round(value * 7);
-      if (data.durationUnit === "months") return Math.round(value * 30.4);
-      return Math.round(value * 365);
-    })();
-    const mgPerUnit = Number.isFinite(data.strengthAmount) ? Math.max(0.1, Number(data.strengthAmount)) : 8;
-    const seededPlan = buildQuitPlan({ dailyUnits, useDays, mgPerUnit });
-    seededPlan.startDate = startDate.toISOString();
-    seededPlan.progressOffsetDays = 0;
-
-    const journalEntries: JournalEntry[] = [];
-    const cravingLogs: CravingLog[] = [];
-
-    for (let dayOffset = 0; dayOffset < 30; dayOffset += 1) {
-      const dayDate = new Date(startDate);
-      dayDate.setDate(startDate.getDate() + dayOffset);
-
-      const dayRatio = dayOffset / 29;
-      const isoDate = toIsoDate(dayDate);
-      const cravingsPerDay = clampInt(8 - dayRatio * 3 + (Math.random() * 2 - 1), 2, 10);
-      const mood = clampInt(4 + dayRatio * 3 + (Math.random() * 2 - 1), 2, 9);
-      const journalCravings = clampInt(cravingsPerDay + (Math.random() * 2 - 1), 1, 10);
-
-      const journalCreatedAt = new Date(dayDate);
-      journalCreatedAt.setHours(20, clampInt(20 + Math.random() * 25, 0, 59), 0, 0);
-
-      journalEntries.push({
-        date: isoDate,
-        mood,
-        cravings: journalCravings,
-        note: dayOffset % 6 === 0 ? "Felt easier with short breathing reset." : "",
-        createdAt: journalCreatedAt.toISOString()
-      });
-
-      for (let cravingIndex = 0; cravingIndex < cravingsPerDay; cravingIndex += 1) {
-        const hour = clampInt(7 + Math.random() * 15, 0, 23);
-        const intensity = clampInt(8 - dayRatio * 2.5 + (Math.random() * 3 - 1.5), 2, 10);
-        const occurredAt = new Date(dayDate);
-        occurredAt.setHours(hour, clampInt(Math.random() * 59, 0, 59), 0, 0);
-
-        cravingLogs.push({
-          date: isoDate,
-          hour,
-          intensity,
-          source: "backend",
-          createdAt: occurredAt.toISOString()
-        });
-      }
-    }
-
-    localStorage.setItem("quitotine:plan", JSON.stringify(seededPlan));
-    localStorage.setItem("quitotine:journal", JSON.stringify(journalEntries));
-    localStorage.setItem("quitotine:cravingLogs", JSON.stringify(cravingLogs));
-    localStorage.setItem("quitotine:relapse", JSON.stringify([]));
-  };
-
   const submitLogin = async () => {
     setLoginPending(true);
     setLoginError("");
@@ -475,17 +412,32 @@ export default function App() {
     }
   };
 
-  const saveNicotineProfile = async (unitPrice: number | null, currency: CurrencyCode) => {
+  const saveNicotineProfile = async (
+    unitPrice: number | null,
+    currency: CurrencyCode,
+    unit: string,
+    piecesPerBox: number | null,
+    dailyAmount: number | null
+  ) => {
     if (!authTokens?.accessToken) {
       throw new Error("Not authenticated.");
     }
+    const normalizedBoxPrice = Number.isFinite(unitPrice) ? Math.max(0, Number(unitPrice)) : 0;
+    const normalizedPiecesPerBox = Number.isFinite(piecesPerBox) ? Math.max(0, Number(piecesPerBox)) : 0;
+    const costPerUnit =
+      normalizedBoxPrice <= 0
+        ? null
+        : unit === "pieces" && normalizedPiecesPerBox > 0
+          ? normalizedBoxPrice / normalizedPiecesPerBox
+          : normalizedBoxPrice;
+
     const response = await fetch(`${API_BASE}/programs/active/product-profile`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authTokens.accessToken}`
       },
-      body: JSON.stringify({ cost_per_unit: unitPrice })
+      body: JSON.stringify({ cost_per_unit: costPerUnit })
     });
     if (!response.ok) {
       if (response.status === 401) {
@@ -502,6 +454,9 @@ export default function App() {
 
     setData((prev) => ({
       ...prev,
+      dailyAmount,
+      dailyUnit: unit,
+      piecesPerBox,
       unitPrice,
       unitPriceCurrency: currency
     }));
@@ -662,10 +617,14 @@ export default function App() {
           productType={data.productType}
           amount={data.dailyAmount}
           unit={data.dailyUnit}
+          piecesPerBox={data.piecesPerBox}
           strengthMg={data.strengthAmount}
+          unitPrice={data.unitPrice}
           onAmount={(value) => updateData({ dailyAmount: value })}
-          onUnit={(value) => updateData({ dailyUnit: value })}
+          onUnit={(value) => updateData({ dailyUnit: value, piecesPerBox: value === "pieces" ? data.piecesPerBox : null })}
+          onPiecesPerBox={(value) => updateData({ piecesPerBox: value })}
           onStrengthMg={(value) => updateData({ strengthAmount: value })}
+          onUnitPrice={(value) => updateData({ unitPrice: value })}
         />
         <OnboardingGoalScene
           id="onboarding-goal"
@@ -689,7 +648,7 @@ export default function App() {
         <OnboardingSummaryScene
           id="onboarding-summary"
           data={data}
-          showDummySeedOption={isTestEnvironment}
+          showDummySeedOption={false}
           seedDummyData={fillWithDummyData}
           onSeedDummyDataChange={setFillWithDummyData}
         />
@@ -700,9 +659,6 @@ export default function App() {
           overlayMs={overlayMsValue}
           holdMs={holdMsValue}
           onSuccess={() => {
-            if (isTestEnvironment && fillWithDummyData) {
-              seedDummyInsightsData();
-            }
             setStage("started");
             navigate("/dashboard", true);
           }}

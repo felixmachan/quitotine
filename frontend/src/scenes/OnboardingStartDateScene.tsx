@@ -21,12 +21,6 @@ export default function OnboardingStartDateScene({ id, value, onChange }: Onboar
           onChange={(event) => onChange(event.target.value)}
           className="focus-ring w-full rounded-[24px] border border-white/10 bg-white/5 px-6 py-5 text-xl text-white"
         />
-        <button
-          type="button"
-          className="focus-ring mt-8 text-sm text-white/50 underline-offset-4 hover:text-white"
-        >
-          {copy.skip}
-        </button>
       </div>
     </StickySection>
   );

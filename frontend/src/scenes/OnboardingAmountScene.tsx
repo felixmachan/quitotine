@@ -8,30 +8,37 @@ interface OnboardingAmountSceneProps {
   productType: string;
   amount: number | null;
   unit: string;
+  piecesPerBox: number | null;
   strengthMg: number;
+  unitPrice: number | null;
   onAmount: (value: number | null) => void;
   onUnit: (value: string) => void;
+  onPiecesPerBox: (value: number | null) => void;
   onStrengthMg: (value: number) => void;
+  onUnitPrice: (value: number | null) => void;
 }
 
 const unitOptionsByProduct: Record<string, { label: string; value: string }[]> = {
   cigarette: [
-    { label: "cigarette", value: "cigarette" },
+    { label: "pieces", value: "pieces" },
     { label: "box", value: "box" }
   ],
   snus: [
-    { label: "snus", value: "snus" },
+    { label: "pieces", value: "pieces" },
     { label: "box", value: "box" }
   ],
   vape: [
-    { label: "puff", value: "puff" },
-    { label: "ml", value: "ml" }
+    { label: "pieces", value: "pieces" },
+    { label: "box", value: "box" }
   ],
   chew: [
-    { label: "portion", value: "portion" },
-    { label: "grams", value: "grams" }
+    { label: "pieces", value: "pieces" },
+    { label: "box", value: "box" }
   ],
-  other: [{ label: "unit", value: "unit" }]
+  other: [
+    { label: "pieces", value: "pieces" },
+    { label: "box", value: "box" }
+  ]
 };
 
 export default function OnboardingAmountScene({
@@ -39,10 +46,14 @@ export default function OnboardingAmountScene({
   productType,
   amount,
   unit,
+  piecesPerBox,
   strengthMg,
+  unitPrice,
   onAmount,
   onUnit,
-  onStrengthMg
+  onPiecesPerBox,
+  onStrengthMg,
+  onUnitPrice
 }: OnboardingAmountSceneProps) {
   const handleStep = (delta: number) => {
     const next = Math.max((amount ?? 0) + delta, 0);
@@ -50,7 +61,7 @@ export default function OnboardingAmountScene({
   };
 
   const unitOptions = useMemo(() => {
-    return unitOptionsByProduct[productType] ?? [{ label: "unit", value: "unit" }];
+    return unitOptionsByProduct[productType] ?? [{ label: "pieces", value: "pieces" }];
   }, [productType]);
 
   useEffect(() => {
@@ -114,11 +125,37 @@ export default function OnboardingAmountScene({
             />
           </div>
         </div>
-        <button
-          type="button"
-          className="focus-ring mt-8 text-sm text-white/50 underline-offset-4 hover:text-white"
-        >
-        </button>
+        <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-end">
+          {unit === "pieces" ? (
+            <div className="flex flex-1 flex-col gap-2">
+              <span className="text-xs uppercase tracking-[0.3em] text-white/40">Pieces per box</span>
+              <div className="flex h-16 items-center gap-4 rounded-[24px] border border-white/10 bg-white/5 px-6">
+                <input
+                  type="number"
+                  value={piecesPerBox ?? ""}
+                  onChange={(event) => onPiecesPerBox(event.target.value === "" ? null : Number(event.target.value))}
+                  className="w-full bg-transparent text-2xl text-white outline-none"
+                  placeholder="20"
+                  min={1}
+                />
+              </div>
+            </div>
+          ) : null}
+          <div className="flex flex-1 flex-col gap-2">
+            <span className="text-xs uppercase tracking-[0.3em] text-white/40">Price per box</span>
+            <div className="flex h-16 items-center gap-4 rounded-[24px] border border-white/10 bg-white/5 px-6">
+              <input
+                type="number"
+                value={unitPrice ?? ""}
+                onChange={(event) => onUnitPrice(event.target.value === "" ? null : Number(event.target.value))}
+                className="w-full bg-transparent text-2xl text-white outline-none"
+                placeholder="2000"
+                min={0}
+                step={0.01}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </StickySection>
   );

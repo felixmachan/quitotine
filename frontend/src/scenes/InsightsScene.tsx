@@ -60,8 +60,8 @@ const DEFAULT_PROFILE: ProfileData = {
 
 export default function InsightsScene({ data, activeRoute, onNavigate, entered = false }: InsightsSceneProps) {
   const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
-  const [journalEntries, setJournalEntries] = useLocalStorage<JournalEntry[]>("quitotine:journal", []);
-  const [cravingLogs, setCravingLogs] = useLocalStorage<CravingLog[]>("quitotine:cravingLogs", []);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [cravingLogs, setCravingLogs] = useState<CravingLog[]>([]);
   const [authTokens] = useLocalStorage<AuthTokens | null>("quitotine:authTokens", null);
   const initialMode: ThemeMode =
     typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -77,17 +77,32 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const [cravingsChartAnimKey, setCravingsChartAnimKey] = useState(0);
   const [moodChartAnimKey, setMoodChartAnimKey] = useState(0);
   const [intensityChartAnimKey, setIntensityChartAnimKey] = useState(0);
+  const [moodCorrelationAnimKey, setMoodCorrelationAnimKey] = useState(0);
   const [trendView, setTrendView] = useState<ChartView>("1m");
   const [cravingsChartView, setCravingsChartView] = useState<ChartView>("1m");
   const [moodChartView, setMoodChartView] = useState<ChartView>("1m");
   const [intensityChartView, setIntensityChartView] = useState<ChartView>("1m");
+  const [timeDistributionView, setTimeDistributionView] = useState<ChartView>("1m");
   const [hoverCravingIndex, setHoverCravingIndex] = useState<number | null>(null);
   const [hoverMoodIndex, setHoverMoodIndex] = useState<number | null>(null);
   const [hoverIntensityIndex, setHoverIntensityIndex] = useState<number | null>(null);
+  const [hoverMoodCorrelation, setHoverMoodCorrelation] = useState<{ mood: number; series: "intensity" | "count" } | null>(null);
 
   const dailyUnits = Number.isFinite(data.dailyAmount) ? Math.max(0, Number(data.dailyAmount)) : 0;
   const mgPerUnit = Number.isFinite(data.strengthAmount) ? Math.max(0.1, Number(data.strengthAmount)) : 8;
-  const unitPricePerDay = Number.isFinite(data.unitPrice) ? Math.max(0, Number(data.unitPrice)) : 0;
+  const boxPrice = Number.isFinite(data.unitPrice) ? Math.max(0, Number(data.unitPrice)) : 0;
+  const piecesPerBox = Number.isFinite(data.piecesPerBox) ? Math.max(0, Number(data.piecesPerBox)) : 0;
+  const dailyMoneySaved = useMemo(() => {
+    if (!dailyUnits || !boxPrice) return 0;
+    if (data.dailyUnit === "pieces") {
+      if (!piecesPerBox) return 0;
+      return (boxPrice / piecesPerBox) * dailyUnits;
+    }
+    if (data.dailyUnit === "box") {
+      return dailyUnits * boxPrice;
+    }
+    return 0;
+  }, [boxPrice, dailyUnits, data.dailyUnit, piecesPerBox]);
   const currencyFormatter = useMemo(
     () =>
       new Intl.NumberFormat("en-US", {
@@ -145,13 +160,16 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     const today = new Date();
     const sortedDates = [...journalEntries.map((entry) => entry.date), ...cravingLogs.map((log) => log.date)].sort();
     const firstDataDate = sortedDates.length ? new Date(`${sortedDates[0]}T00:00:00`) : null;
+    const lastDataDate = sortedDates.length ? new Date(`${sortedDates[sortedDates.length - 1]}T00:00:00`) : null;
     const fallbackStart = new Date();
     fallbackStart.setDate(fallbackStart.getDate() - 13);
     const startDate = firstDataDate && firstDataDate < today ? firstDataDate : fallbackStart;
+    const endDate = lastDataDate && lastDataDate > today ? lastDataDate : today;
     startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
 
     const cursor = new Date(startDate);
-    while (cursor <= today) {
+    while (cursor <= endDate) {
       const key = toIsoDate(cursor);
       const entry = entryByDate.get(key);
       days.push({ date: key, cravings: cravingCountByDate.get(key) ?? 0, mood: entry?.mood ?? 0 });
@@ -170,6 +188,15 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     const daysBack = view === "1w" ? 7 : 30;
     const end = new Date();
     const start = new Date();
+    start.setDate(end.getDate() - (daysBack - 1));
+    return toIsoDate(start);
+  };
+
+  const getStartKeyForViewFromEnd = (view: ChartView, endKey: string | null) => {
+    if (view === "all") return null;
+    const daysBack = view === "1w" ? 7 : 30;
+    const end = endKey ? new Date(`${endKey}T00:00:00`) : new Date();
+    const start = new Date(end);
     start.setDate(end.getDate() - (daysBack - 1));
     return toIsoDate(start);
   };
@@ -235,17 +262,17 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     return count;
   }, [trendSeries]);
   const moneySaved = useMemo(() => {
-    if (!unitPricePerDay || !trendSeries.length) return 0;
-    return unitPricePerDay * trendSeries.length;
-  }, [trendSeries.length, unitPricePerDay]);
+    if (!dailyMoneySaved || !trendSeries.length) return 0;
+    return dailyMoneySaved * trendSeries.length;
+  }, [dailyMoneySaved, trendSeries.length]);
 
   const chartUnlock = Math.max(0, 7 - journalEntries.length);
   const baselineUnlock =
     trendView === "all" || !trendDaysBack ? 0 : Math.max(0, trendDaysBack * 2 - recentSeries.length);
 
-  const buildTrendGeometry = (values: number[], dates: string[], chartWidth = 760) => {
+  const buildTrendGeometry = (values: number[], dates: string[], chartWidth = 760, chartHeight = 360) => {
     const width = chartWidth;
-    const height = 360;
+    const height = chartHeight;
     const left = 44;
     const right = 8;
     const top = 14;
@@ -285,8 +312,11 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     fallbackStart.setDate(fallbackStart.getDate() - 13);
     const sortedDates = effectiveCravingLogs.map((log) => log.date).sort();
     const firstDataDate = sortedDates.length ? new Date(`${sortedDates[0]}T00:00:00`) : null;
+    const lastDataDate = sortedDates.length ? new Date(`${sortedDates[sortedDates.length - 1]}T00:00:00`) : null;
     const startDate = firstDataDate && firstDataDate < today ? firstDataDate : fallbackStart;
+    const endDate = lastDataDate && lastDataDate > today ? lastDataDate : today;
     startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
 
     const avgByDate = new Map<string, { sum: number; count: number }>();
     effectiveCravingLogs.forEach((log) => {
@@ -298,7 +328,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
 
     const days: { date: string; intensity: number }[] = [];
     const cursor = new Date(startDate);
-    while (cursor <= today) {
+    while (cursor <= endDate) {
       const key = toIsoDate(cursor);
       const aggregate = avgByDate.get(key);
       days.push({ date: key, intensity: aggregate ? aggregate.sum / aggregate.count : 0 });
@@ -356,6 +386,21 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     { label: "20:00-24:00", start: 20, end: 24 }
   ];
 
+  const latestDiaryDate = useMemo(
+    () => journalEntries.reduce((latest, entry) => (entry.date > latest ? entry.date : latest), ""),
+    [journalEntries]
+  );
+  const timeDistributionStartKey = useMemo(
+    () => getStartKeyForViewFromEnd(timeDistributionView, latestDiaryDate || null),
+    [latestDiaryDate, timeDistributionView]
+  );
+  const timeDistributionLogs = useMemo(() => {
+    if (!timeDistributionStartKey) return effectiveCravingLogs;
+    return effectiveCravingLogs.filter(
+      (log) => log.date >= timeDistributionStartKey && (!latestDiaryDate || log.date <= latestDiaryDate)
+    );
+  }, [effectiveCravingLogs, latestDiaryDate, timeDistributionStartKey]);
+
   const trendStartKey = getStartKeyForView(trendView);
   const trendCravingLogs = useMemo(() => {
     if (!trendStartKey) return effectiveCravingLogs;
@@ -365,14 +410,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
 
   const heatmapMatrix = useMemo(() => {
     const matrix = Array.from({ length: 7 }, () => Array.from({ length: 6 }, () => 0));
-    effectiveCravingLogs.forEach((log) => {
+    timeDistributionLogs.forEach((log) => {
       const date = new Date(`${log.date}T00:00:00`);
       const weekday = date.getDay();
       const slot = Math.min(5, Math.floor(log.hour / 4));
       matrix[weekday][slot] += log.intensity;
     });
     return matrix;
-  }, [effectiveCravingLogs]);
+  }, [timeDistributionLogs]);
 
   const heatmapMax = useMemo(() => Math.max(1, ...heatmapMatrix.flat()), [heatmapMatrix]);
   const heatmapReady = useMemo(() => heatmapMatrix.flat().some((value) => value > 0), [heatmapMatrix]);
@@ -384,7 +429,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
       evening: [] as number[],
       night: [] as number[]
     };
-    effectiveCravingLogs.forEach((log) => {
+    timeDistributionLogs.forEach((log) => {
       if (log.hour >= 5 && log.hour < 11) buckets.morning.push(log.intensity);
       else if (log.hour >= 11 && log.hour < 17) buckets.afternoon.push(log.intensity);
       else if (log.hour >= 17 && log.hour < 22) buckets.evening.push(log.intensity);
@@ -395,7 +440,109 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
       avg: values.length ? average(values) : 0,
       count: values.length
     }));
-  }, [effectiveCravingLogs]);
+  }, [timeDistributionLogs]);
+
+  const cravingsByMoodSeries = useMemo(() => {
+    const intensityByDate = new Map<string, { sum: number; count: number }>();
+    cravingLogs.forEach((log) => {
+      const prev = intensityByDate.get(log.date) ?? { sum: 0, count: 0 };
+      prev.sum += log.intensity;
+      prev.count += 1;
+      intensityByDate.set(log.date, prev);
+    });
+
+    const grouped = new Map<number, { days: number; intensitySum: number; cravingCountSum: number }>();
+    for (let mood = 0; mood <= 10; mood += 1) {
+      grouped.set(mood, { days: 0, intensitySum: 0, cravingCountSum: 0 });
+    }
+
+    journalEntries.forEach((entry) => {
+      const mood = Math.max(0, Math.min(10, Math.round(entry.mood)));
+      const dayIntensity = intensityByDate.get(entry.date);
+      const avgIntensity = dayIntensity?.count ? dayIntensity.sum / dayIntensity.count : 0;
+      const cravingCount = cravingCountByDate.get(entry.date) ?? 0;
+      const bucket = grouped.get(mood);
+      if (!bucket) return;
+      bucket.days += 1;
+      bucket.intensitySum += avgIntensity;
+      bucket.cravingCountSum += cravingCount;
+    });
+
+    const series: { mood: number; avgIntensity: number; avgCravings: number; days: number }[] = [];
+    for (let mood = 0; mood <= 10; mood += 1) {
+      const bucket = grouped.get(mood) ?? { days: 0, intensitySum: 0, cravingCountSum: 0 };
+      series.push({
+        mood,
+        avgIntensity: bucket.days ? bucket.intensitySum / bucket.days : 0,
+        avgCravings: bucket.days ? bucket.cravingCountSum / bucket.days : 0,
+        days: bucket.days
+      });
+    }
+    return series;
+  }, [cravingCountByDate, cravingLogs, journalEntries]);
+  const cravingsByMoodReady = useMemo(() => cravingsByMoodSeries.some((point) => point.days > 0), [cravingsByMoodSeries]);
+  const cravingsByMoodFingerprint = useMemo(
+    () =>
+      cravingsByMoodSeries
+        .map((point) => `${point.avgIntensity.toFixed(2)}:${point.avgCravings.toFixed(2)}:${point.days}`)
+        .join("|"),
+    [cravingsByMoodSeries]
+  );
+  const cravingsByMoodYMax = useMemo(() => {
+    const maxValue = Math.max(
+      1,
+      ...cravingsByMoodSeries.map((point) => Math.max(point.avgIntensity, point.avgCravings))
+    );
+    return Math.max(4, Math.ceil(maxValue * 1.15));
+  }, [cravingsByMoodSeries]);
+  const buildMoodChartGeometry = (chartWidth = 1460) => {
+    const width = chartWidth;
+    const height = 340;
+    const left = 44;
+    const right = 12;
+    const top = 14;
+    const bottom = 52;
+    const innerWidth = width - left - right;
+    const innerHeight = height - top - bottom;
+    const yMax = cravingsByMoodYMax;
+
+    const toX = (mood: number) => left + (mood / 10) * innerWidth;
+    const toY = (value: number) => top + (1 - Math.max(0, Math.min(yMax, value)) / yMax) * innerHeight;
+
+    const intensityLinePoints = cravingsByMoodSeries.map((point) => `${toX(point.mood)},${toY(point.avgIntensity)}`).join(" ");
+    const cravingsLinePoints = cravingsByMoodSeries.map((point) => `${toX(point.mood)},${toY(point.avgCravings)}`).join(" ");
+    const intensityAreaPoints = `${left},${top + innerHeight} ${intensityLinePoints} ${left + innerWidth},${top + innerHeight}`;
+    const cravingsAreaPoints = `${left},${top + innerHeight} ${cravingsLinePoints} ${left + innerWidth},${top + innerHeight}`;
+    const yTicks = Array.from({ length: 6 }, (_, index) => {
+      const value = (yMax / 5) * index;
+      return { value, y: toY(value) };
+    });
+
+    return {
+      width,
+      height,
+      left,
+      top,
+      innerHeight,
+      yTicks,
+      toX,
+      toY,
+      intensityLinePoints,
+      cravingsLinePoints,
+      intensityAreaPoints,
+      cravingsAreaPoints
+    };
+  };
+
+  useEffect(() => {
+    setHoverMoodCorrelation(null);
+  }, [cravingsByMoodFingerprint]);
+
+  useEffect(() => {
+    if (cravingsByMoodReady) {
+      setMoodCorrelationAnimKey((prev) => prev + 1);
+    }
+  }, [cravingsByMoodFingerprint, cravingsByMoodReady]);
 
   const formatUnlock = (needed: number) =>
     `Not enough data yet - log ${needed} more check-in${needed === 1 ? "" : "s"} to unlock.`;
@@ -431,10 +578,11 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     }
     try {
       const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
-      const end = new Date();
-      const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
-      const diaryUrl = `${apiBase}/diary?start=${encodeURIComponent(toIsoDate(start))}&end=${encodeURIComponent(toIsoDate(end))}`;
-      const cravingsUrl = `${apiBase}/events?event_type=craving&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`;
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+      // Do not cap by "today": charts should extend to the latest logged diary date.
+      const diaryUrl = `${apiBase}/diary?start=${encodeURIComponent(toIsoDate(start))}`;
+      const cravingsUrl = `${apiBase}/events?event_type=craving&start=${encodeURIComponent(start.toISOString())}`;
 
       const [diaryResponse, cravingsResponse] = await Promise.all([
         fetch(diaryUrl, {
@@ -502,8 +650,18 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
         });
 
       if (runId === importRunRef.current) {
-        setJournalEntries(imported);
-        setCravingLogs(importedCravingLogs);
+        const backendLastDate = imported.length ? imported[0].date : "";
+        setJournalEntries((prev) => {
+          const futureLocal = prev.filter((entry) => entry.date > backendLastDate);
+          const byDate = new Map<string, JournalEntry>();
+          imported.forEach((entry) => byDate.set(entry.date, entry));
+          futureLocal.forEach((entry) => byDate.set(entry.date, entry));
+          return Array.from(byDate.values()).sort((a, b) => (a.date < b.date ? 1 : -1));
+        });
+        setCravingLogs((prev) => {
+          const futureLocal = prev.filter((log) => log.date > backendLastDate);
+          return [...importedCravingLogs, ...futureLocal];
+        });
         setImportError("");
       }
     } catch {
@@ -606,11 +764,13 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
               </div>
               <div className="metric">
                 <span>Money saved</span>
-                <strong>{unitPricePerDay > 0 ? currencyFormatter.format(moneySaved) : "--"}</strong>
+                <strong>{dailyMoneySaved > 0 ? currencyFormatter.format(moneySaved) : "--"}</strong>
                 <em>
-                  {unitPricePerDay > 0
-                    ? `${currencyFormatter.format(unitPricePerDay)} added per day from Nicotine profile`
-                    : "Set unit price in Profile > Nicotine profile"}
+                  {dailyMoneySaved > 0
+                    ? `${currencyFormatter.format(dailyMoneySaved)} added per day from Nicotine profile`
+                    : data.dailyUnit === "pieces"
+                      ? "Set both Price per box and Pieces per box in Nicotine profile"
+                      : "Set Price per box in Nicotine profile"}
                 </em>
               </div>
             </div>
@@ -869,14 +1029,16 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                   const chart = buildTrendGeometry(
                     filteredIntensityValues,
                     intensityFilteredSeries.map((item) => item.date),
-                    1520
+                    1460,
+                    340
                   );
                   const gradientId = `intensity-area-grad-${intensityChartAnimKey}`;
                   return (
                     <svg
                       key={`intensity-${intensityChartAnimKey}`}
                       viewBox={`0 0 ${chart.width} ${chart.height}`}
-                      className="chart-line chart-line--full"
+                      className="chart-line chart-line--full chart-line--wide"
+                      preserveAspectRatio="xMidYMid meet"
                       aria-hidden="true"
                     >
                       <defs>
@@ -895,9 +1057,9 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                         </g>
                       ))}
                       <text
-                        x={16}
+                        x={8}
                         y={chart.top + chart.innerHeight / 2}
-                        transform={`rotate(-90 16 ${chart.top + chart.innerHeight / 2})`}
+                        transform={`rotate(-90 8 ${chart.top + chart.innerHeight / 2})`}
                         className="chart-axis-title"
                         textAnchor="middle"
                       >
@@ -967,8 +1129,18 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
 
           <div className="dashboard-card chart-card heatmap-card" style={{ ["--card-index" as string]: 4 }}>
             <div className="card-header">
-              <h3>Time-of-day distribution</h3>
-              <span className="card-subtitle">Craving intensity by weekday and 4-hour window</span>
+              <div>
+                <h3>Time-of-day distribution</h3>
+                <span className="card-subtitle">Craving intensity by weekday and 4-hour window</span>
+              </div>
+              <label className="chart-view-control">
+                <span>View</span>
+                <select value={timeDistributionView} onChange={(event) => setTimeDistributionView(event.target.value as ChartView)}>
+                  <option value="all">All time</option>
+                  <option value="1w">This week</option>
+                  <option value="1m">This month</option>
+                </select>
+              </label>
             </div>
             {heatmapReady ? (
               <>
@@ -1015,7 +1187,150 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card interpretation-card" style={{ ["--card-index" as string]: 5 }}>
+          <div className="dashboard-card chart-card cravings-by-mood-card" style={{ ["--card-index" as string]: 5 }}>
+            <div className="card-header">
+              <div>
+                <h3>Cravings by mood</h3>
+                <span className="card-subtitle">Daily averages grouped by mood score</span>
+              </div>
+            </div>
+            {cravingsByMoodReady ? (
+              <div className="chart-shell">
+                {(() => {
+                  const chart = buildMoodChartGeometry();
+                  const intensityGradientId = `mood-correlation-intensity-grad-${moodCorrelationAnimKey}`;
+                  const countGradientId = `mood-correlation-count-grad-${moodCorrelationAnimKey}`;
+                  return (
+                    <svg
+                      key={`mood-correlation-${moodCorrelationAnimKey}`}
+                      viewBox={`0 0 ${chart.width} ${chart.height}`}
+                      className="chart-line chart-line--full chart-line--wide chart-line--mood-correlation"
+                      preserveAspectRatio="xMidYMid meet"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <linearGradient id={intensityGradientId} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="rgba(248, 98, 126, 0.52)" />
+                          <stop offset="72%" stopColor="rgba(248, 98, 126, 0.14)" />
+                          <stop offset="100%" stopColor="rgba(248, 98, 126, 0.02)" />
+                        </linearGradient>
+                        <linearGradient id={countGradientId} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="rgba(96, 152, 255, 0.48)" />
+                          <stop offset="72%" stopColor="rgba(96, 152, 255, 0.13)" />
+                          <stop offset="100%" stopColor="rgba(96, 152, 255, 0.02)" />
+                        </linearGradient>
+                      </defs>
+                      {chart.yTicks.map((tick, idx) => (
+                        <g key={`mood-y-${idx}`}>
+                          <line x1={chart.left} y1={tick.y} x2={chart.width - 18} y2={tick.y} className="chart-grid" />
+                          <text x={chart.left - 10} y={tick.y + 4} textAnchor="end" className="chart-tick">
+                            {tick.value % 1 === 0 ? tick.value.toFixed(0) : tick.value.toFixed(1)}
+                          </text>
+                        </g>
+                      ))}
+                      <polygon
+                        points={chart.intensityAreaPoints}
+                        className="chart-area chart-area--mood-intensity chart-area--animate"
+                        style={{ fill: `url(#${intensityGradientId})` }}
+                      />
+                      <polygon
+                        points={chart.cravingsAreaPoints}
+                        className="chart-area chart-area--mood-count chart-area--animate"
+                        style={{ fill: `url(#${countGradientId})` }}
+                      />
+                      <polyline
+                        points={chart.intensityLinePoints}
+                        className="chart-polyline chart-polyline--mood-intensity chart-polyline--animate"
+                        pathLength={1}
+                      />
+                      <polyline
+                        points={chart.cravingsLinePoints}
+                        className="chart-polyline chart-polyline--mood-count chart-polyline--animate"
+                        pathLength={1}
+                      />
+                      {cravingsByMoodSeries.map((point) => (
+                        <g key={`mood-point-${point.mood}`}>
+                          <circle
+                            cx={chart.toX(point.mood)}
+                            cy={chart.toY(point.avgIntensity)}
+                            r={3.2}
+                            style={{ animationDelay: `${point.mood * 30}ms` }}
+                            onMouseEnter={() => setHoverMoodCorrelation({ mood: point.mood, series: "intensity" })}
+                            onMouseLeave={() => setHoverMoodCorrelation((prev) => (prev?.mood === point.mood && prev?.series === "intensity" ? null : prev))}
+                            className="chart-point chart-point--mood-intensity"
+                          />
+                          <circle
+                            cx={chart.toX(point.mood)}
+                            cy={chart.toY(point.avgCravings)}
+                            r={3.2}
+                            style={{ animationDelay: `${point.mood * 30 + 80}ms` }}
+                            onMouseEnter={() => setHoverMoodCorrelation({ mood: point.mood, series: "count" })}
+                            onMouseLeave={() => setHoverMoodCorrelation((prev) => (prev?.mood === point.mood && prev?.series === "count" ? null : prev))}
+                            className="chart-point chart-point--mood-count"
+                          />
+                        </g>
+                      ))}
+                      {hoverMoodCorrelation ? (() => {
+                        const point = cravingsByMoodSeries.find((item) => item.mood === hoverMoodCorrelation.mood);
+                        if (!point || point.days === 0) return null;
+                        const value =
+                          hoverMoodCorrelation.series === "intensity" ? point.avgIntensity : point.avgCravings;
+                        const x = chart.toX(point.mood);
+                        const y = chart.toY(value);
+                        const boxX = Math.max(chart.left + 8, Math.min(chart.width - 182, x - 86));
+                        const boxY = Math.max(chart.top + 6, y - 58);
+                        const title =
+                          hoverMoodCorrelation.series === "intensity" ? "Avg intensity" : "Avg cravings/day";
+                        return (
+                          <g className="chart-tooltip">
+                            <line x1={x} y1={y} x2={x} y2={chart.top + chart.innerHeight} className="chart-guide-line" />
+                            <rect x={boxX} y={boxY} width="176" height="52" rx="8" className="chart-tooltip-box" />
+                            <text x={boxX + 8} y={boxY + 16} className="chart-tooltip-text">
+                              Mood {point.mood} • {title}
+                            </text>
+                            <text x={boxX + 8} y={boxY + 33} className="chart-tooltip-text chart-tooltip-text--strong">
+                              {value.toFixed(1)} ({point.days} day{point.days === 1 ? "" : "s"})
+                            </text>
+                          </g>
+                        );
+                      })() : null}
+                      {Array.from({ length: 11 }, (_, mood) => (
+                        <text key={`mood-x-${mood}`} x={chart.toX(mood)} y={chart.height - 10} textAnchor="middle" className="chart-tick">
+                          {mood}
+                        </text>
+                      ))}
+                      <text x={chart.width / 2} y={chart.height + 10} textAnchor="middle" className="chart-axis-title">
+                        Mood score
+                      </text>
+                      <text
+                        x={8}
+                        y={chart.top + chart.innerHeight / 2}
+                        transform={`rotate(-90 8 ${chart.top + chart.innerHeight / 2})`}
+                        className="chart-axis-title"
+                        textAnchor="middle"
+                      >
+                        Average value
+                      </text>
+                    </svg>
+                  );
+                })()}
+                <div className="series-legend">
+                  <span className="series-legend-item">
+                    <i className="series-dot series-dot--intensity" />
+                    Average craving intensity by mood
+                  </span>
+                  <span className="series-legend-item">
+                    <i className="series-dot series-dot--count" />
+                    Average number of cravings by mood
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="chart-placeholder">Not enough diary entries yet to plot cravings by mood.</div>
+            )}
+          </div>
+
+          <div className="dashboard-card interpretation-card" style={{ ["--card-index" as string]: 6 }}>
             <div className="card-header">
               <h3>Interpretation</h3>
               <span className="card-subtitle">Pattern note</span>
@@ -1028,7 +1343,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card ifthen-card" style={{ ["--card-index" as string]: 6 }}>
+          <div className="dashboard-card ifthen-card" style={{ ["--card-index" as string]: 7 }}>
             <div className="card-header">
               <h3>If-then insights</h3>
               <span className="card-subtitle">Graph-backed signals</span>
@@ -1044,7 +1359,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 7 }}>
+          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 8 }}>
             <div className="card-header">
               <h3>Deep dives</h3>
               <span className="card-subtitle">Optional belief work</span>
@@ -1130,7 +1445,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             </details>
           </div>
 
-          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 8 }}>
+          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 9 }}>
             <div className="card-header">
               <h3>AI interpreter</h3>
               <span className="card-subtitle">Planned premium layer</span>
