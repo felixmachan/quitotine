@@ -78,16 +78,37 @@
   padding: 0;
   position: relative;
   cursor: pointer;
+  display: grid;
+  place-items: center;
 }
 
 .timeline-marker--past .timeline-marker__dot {
-  background: rgba(120, 240, 220, 0.6);
-  border-color: rgba(120, 240, 220, 0.8);
+  background: linear-gradient(180deg, rgba(120, 255, 170, 0.95), rgba(70, 220, 130, 0.92));
+  border-color: rgba(155, 255, 194, 0.95);
+  box-shadow:
+    0 0 0 2px rgba(14, 40, 28, 0.7),
+    0 0 12px rgba(90, 235, 145, 0.6);
 }
 
 .timeline-marker--current .timeline-marker__dot {
-  background: rgba(120, 240, 220, 0.9);
-  border-color: rgba(120, 240, 220, 1);
+  background: linear-gradient(180deg, rgba(255, 213, 120, 0.98), rgba(250, 170, 70, 0.96));
+  border-color: rgba(255, 228, 160, 0.98);
+  box-shadow:
+    0 0 0 2px rgba(36, 24, 8, 0.82),
+    0 0 16px rgba(255, 188, 90, 0.8);
+}
+
+.timeline-marker--future .timeline-marker__dot {
+  background: rgba(220, 236, 236, 0.24);
+  border-color: rgba(220, 236, 236, 0.38);
+}
+
+.timeline-marker__check {
+  font-size: 0.55rem;
+  line-height: 1;
+  font-weight: 800;
+  color: rgba(6, 20, 14, 0.95);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .timeline-tooltip {

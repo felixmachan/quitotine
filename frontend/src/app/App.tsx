@@ -424,6 +424,44 @@ export default function App() {
     }
   };
 
+  const deleteProfile = async () => {
+    if (!authTokens?.accessToken) {
+      throw new Error("Not authenticated.");
+    }
+    const response = await fetch(`${API_BASE}/profile`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${authTokens.accessToken}`
+      }
+    });
+    if (!response.ok) {
+      if (response.status === 401) {
+        setAuthTokens(null);
+        setAuthUser(null);
+        navigate("/login", true);
+        throw new Error("Session expired. Please log in again.");
+      }
+      if (response.status === 404) {
+        throw new Error("Delete profile endpoint not found on backend (404). Deploy the latest backend.");
+      }
+      throw new Error(`Could not delete profile${await parseError(response)}.`);
+    }
+
+    setAuthTokens(null);
+    setAuthUser(null);
+    setData(initialData);
+    localStorage.removeItem("quitotine:authTokens");
+    localStorage.removeItem("quitotine:authUser");
+    localStorage.removeItem("quitotine:onboarding");
+    localStorage.removeItem("quitotine:plan");
+    localStorage.removeItem("quitotine:profile");
+    localStorage.removeItem("quitotine:carrInsights");
+    localStorage.removeItem("quitotine:futureMessage");
+    localStorage.removeItem("quitotine:spike");
+    localStorage.removeItem("quitotine:spikeDismissed");
+    navigate("/login", true);
+  };
+
   const saveAccount = async (displayName: string) => {
     if (!authTokens?.accessToken) {
       throw new Error("Not authenticated.");
@@ -603,6 +641,7 @@ export default function App() {
           onAccountSave={saveAccount}
           onPasswordChange={changePassword}
           onNicotineProfileSave={saveNicotineProfile}
+          onDeleteProfile={deleteProfile}
         />
       </div>
     );

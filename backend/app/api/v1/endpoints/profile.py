@@ -39,3 +39,13 @@ def update_password(
     db.commit()
     return {"detail": "ok"}
 
+
+@router.delete("")
+def delete_me(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db.delete(current_user)
+    db.commit()
+    return {"detail": "ok"}
+

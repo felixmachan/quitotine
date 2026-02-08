@@ -22,6 +22,17 @@ interface InsightsSceneProps {
 
 type ThemeMode = "dark" | "light";
 type ChartView = "1w" | "1m" | "all";
+type RevealCardId =
+  | "metrics"
+  | "cravings"
+  | "mood"
+  | "intensity"
+  | "heatmap"
+  | "moodCorrelation"
+  | "interpretation"
+  | "ifthen"
+  | "deepdive"
+  | "ai";
 
 interface CarrInsight {
   id: string;
@@ -59,6 +70,7 @@ const DEFAULT_PROFILE: ProfileData = {
 };
 
 export default function InsightsScene({ data, activeRoute, onNavigate, entered = false }: InsightsSceneProps) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const [plan, setPlan] = useLocalStorage<QuitPlan | null>("quitotine:plan", null);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [cravingLogs, setCravingLogs] = useState<CravingLog[]>([]);
@@ -78,6 +90,30 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const [moodChartAnimKey, setMoodChartAnimKey] = useState(0);
   const [intensityChartAnimKey, setIntensityChartAnimKey] = useState(0);
   const [moodCorrelationAnimKey, setMoodCorrelationAnimKey] = useState(0);
+  const revealRefs = useRef<Record<RevealCardId, HTMLDivElement | null>>({
+    metrics: null,
+    cravings: null,
+    mood: null,
+    intensity: null,
+    heatmap: null,
+    moodCorrelation: null,
+    interpretation: null,
+    ifthen: null,
+    deepdive: null,
+    ai: null
+  });
+  const [revealedCards, setRevealedCards] = useState<Record<RevealCardId, boolean>>({
+    metrics: false,
+    cravings: false,
+    mood: false,
+    intensity: false,
+    heatmap: false,
+    moodCorrelation: false,
+    interpretation: false,
+    ifthen: false,
+    deepdive: false,
+    ai: false
+  });
   const [trendView, setTrendView] = useState<ChartView>("1m");
   const [cravingsChartView, setCravingsChartView] = useState<ChartView>("1m");
   const [moodChartView, setMoodChartView] = useState<ChartView>("1m");
@@ -183,15 +219,6 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   };
 
-  const getStartKeyForView = (view: ChartView) => {
-    if (view === "all") return null;
-    const daysBack = view === "1w" ? 7 : 30;
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - (daysBack - 1));
-    return toIsoDate(start);
-  };
-
   const getStartKeyForViewFromEnd = (view: ChartView, endKey: string | null) => {
     if (view === "all") return null;
     const daysBack = view === "1w" ? 7 : 30;
@@ -202,7 +229,8 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   };
 
   const filterSeriesByView = <T extends { date: string }>(series: T[], view: ChartView) => {
-    const startKey = getStartKeyForView(view);
+    const endKey = series.length ? series[series.length - 1].date : null;
+    const startKey = getStartKeyForViewFromEnd(view, endKey);
     if (!startKey) return series;
     return series.filter((item) => item.date >= startKey);
   };
@@ -347,22 +375,60 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const filteredMoodSeries = moodFilteredSeries.map((day) => day.mood);
 
   useEffect(() => {
-    if (!chartUnlock && filteredCravingsSeries.length >= 2) {
+    if (typeof IntersectionObserver === "undefined") {
+      setRevealedCards({
+        metrics: true,
+        cravings: true,
+        mood: true,
+        intensity: true,
+        heatmap: true,
+        moodCorrelation: true,
+        interpretation: true,
+        ifthen: true,
+        deepdive: true,
+        ai: true
+      });
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.34) return;
+          const cardId = (entry.target as HTMLElement).dataset.revealId as RevealCardId | undefined;
+          if (!cardId) return;
+          setRevealedCards((prev) => (prev[cardId] ? prev : { ...prev, [cardId]: true }));
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: [0.2, 0.34, 0.55], rootMargin: "0px 0px -4% 0px", root: shellRef.current ?? null }
+    );
+
+    (Object.keys(revealRefs.current) as RevealCardId[]).forEach((cardId) => {
+      const target = revealRefs.current[cardId];
+      if (target && !revealedCards[cardId]) observer.observe(target);
+    });
+
+    return () => observer.disconnect();
+  }, [revealedCards]);
+
+  useEffect(() => {
+    if (revealedCards.cravings && !chartUnlock && filteredCravingsSeries.length >= 2) {
       setCravingsChartAnimKey((prev) => prev + 1);
     }
-  }, [chartUnlock, cravingsChartView, filteredCravingsSeries.join("|")]);
+  }, [chartUnlock, cravingsChartView, filteredCravingsSeries.join("|"), revealedCards.cravings]);
 
   useEffect(() => {
-    if (!chartUnlock && filteredMoodSeries.length >= 2) {
+    if (revealedCards.mood && !chartUnlock && filteredMoodSeries.length >= 2) {
       setMoodChartAnimKey((prev) => prev + 1);
     }
-  }, [chartUnlock, filteredMoodSeries.join("|"), moodChartView]);
+  }, [chartUnlock, filteredMoodSeries.join("|"), moodChartView, revealedCards.mood]);
 
   useEffect(() => {
-    if (effectiveCravingLogs.length && filteredIntensityValues.length >= 2) {
+    if (revealedCards.intensity && effectiveCravingLogs.length && filteredIntensityValues.length >= 2) {
       setIntensityChartAnimKey((prev) => prev + 1);
     }
-  }, [effectiveCravingLogs.length, filteredIntensityValues.join("|"), intensityChartView]);
+  }, [effectiveCravingLogs.length, filteredIntensityValues.join("|"), intensityChartView, revealedCards.intensity]);
 
   useEffect(() => {
     setHoverCravingIndex(null);
@@ -401,7 +467,11 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     );
   }, [effectiveCravingLogs, latestDiaryDate, timeDistributionStartKey]);
 
-  const trendStartKey = getStartKeyForView(trendView);
+  const latestCravingLogDate = useMemo(
+    () => effectiveCravingLogs.reduce((latest, log) => (log.date > latest ? log.date : latest), ""),
+    [effectiveCravingLogs]
+  );
+  const trendStartKey = getStartKeyForViewFromEnd(trendView, latestCravingLogDate || null);
   const trendCravingLogs = useMemo(() => {
     if (!trendStartKey) return effectiveCravingLogs;
     return effectiveCravingLogs.filter((log) => log.date >= trendStartKey);
@@ -539,10 +609,10 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   }, [cravingsByMoodFingerprint]);
 
   useEffect(() => {
-    if (cravingsByMoodReady) {
+    if (revealedCards.moodCorrelation && cravingsByMoodReady) {
       setMoodCorrelationAnimKey((prev) => prev + 1);
     }
-  }, [cravingsByMoodFingerprint, cravingsByMoodReady]);
+  }, [cravingsByMoodFingerprint, cravingsByMoodReady, revealedCards.moodCorrelation]);
 
   const formatUnlock = (needed: number) =>
     `Not enough data yet - log ${needed} more check-in${needed === 1 ? "" : "s"} to unlock.`;
@@ -683,6 +753,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
 
   return (
     <div
+      ref={shellRef}
       className={`dashboard-shell ${entered ? "dashboard-shell--enter" : ""}`}
       data-theme-mode={mode}
       style={
@@ -714,7 +785,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
 
       <div className="dashboard-content">
         <div className="dashboard-grid">
-          <div className="dashboard-card metrics-card" style={{ ["--card-index" as string]: 0 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.metrics = node;
+            }}
+            data-reveal-id="metrics"
+            className={`dashboard-card metrics-card insights-reveal${revealedCards.metrics ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 0 }}
+          >
             <div className="card-header">
               <div>
                 <h3>Quick data</h3>
@@ -776,7 +854,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             </div>
           </div>
 
-          <div className="dashboard-card chart-card" style={{ ["--card-index" as string]: 1 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.cravings = node;
+            }}
+            data-reveal-id="cravings"
+            className={`dashboard-card chart-card insights-reveal${revealedCards.cravings ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 1 }}
+          >
             <div className="card-header">
               <div>
                 <h3>Cravings trend</h3>
@@ -843,7 +928,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                             cy={y}
                             r="4"
                             className="chart-point"
-                            style={{ animationDelay: `${0.28 + index * 0.04}s` }}
+                            style={{ animationDelay: `${1.12 + index * 0.04}s` }}
                             onMouseEnter={() => setHoverCravingIndex(index)}
                             onMouseLeave={() => setHoverCravingIndex(null)}
                           />
@@ -885,7 +970,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card chart-card" style={{ ["--card-index" as string]: 2 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.mood = node;
+            }}
+            data-reveal-id="mood"
+            className={`dashboard-card chart-card insights-reveal${revealedCards.mood ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 2 }}
+          >
             <div className="card-header">
               <div>
                 <h3>Mood trend</h3>
@@ -960,7 +1052,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                             cy={y}
                             r="4"
                             className="chart-point chart-point--mood"
-                            style={{ animationDelay: `${0.28 + index * 0.04}s` }}
+                            style={{ animationDelay: `${1.12 + index * 0.04}s` }}
                             onMouseEnter={() => setHoverMoodIndex(index)}
                             onMouseLeave={() => setHoverMoodIndex(null)}
                           />
@@ -1002,7 +1094,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card chart-card intensity-trend-card" style={{ ["--card-index" as string]: 3 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.intensity = node;
+            }}
+            data-reveal-id="intensity"
+            className={`dashboard-card chart-card intensity-trend-card insights-reveal${revealedCards.intensity ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 3 }}
+          >
             <div className="card-header">
               <div>
                 <h3>Craving intensity trend</h3>
@@ -1085,7 +1184,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                             cy={y}
                             r="4"
                             className="chart-point chart-point--intensity"
-                            style={{ animationDelay: `${0.28 + index * 0.04}s` }}
+                            style={{ animationDelay: `${1.12 + index * 0.04}s` }}
                             onMouseEnter={() => setHoverIntensityIndex(index)}
                             onMouseLeave={() => setHoverIntensityIndex(null)}
                           />
@@ -1127,7 +1226,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card chart-card heatmap-card" style={{ ["--card-index" as string]: 4 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.heatmap = node;
+            }}
+            data-reveal-id="heatmap"
+            className={`dashboard-card chart-card heatmap-card insights-reveal${revealedCards.heatmap ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 4 }}
+          >
             <div className="card-header">
               <div>
                 <h3>Time-of-day distribution</h3>
@@ -1187,7 +1293,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card chart-card cravings-by-mood-card" style={{ ["--card-index" as string]: 5 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.moodCorrelation = node;
+            }}
+            data-reveal-id="moodCorrelation"
+            className={`dashboard-card chart-card cravings-by-mood-card insights-reveal${revealedCards.moodCorrelation ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 5 }}
+          >
             <div className="card-header">
               <div>
                 <h3>Cravings by mood</h3>
@@ -1253,8 +1366,8 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                           <circle
                             cx={chart.toX(point.mood)}
                             cy={chart.toY(point.avgIntensity)}
-                            r={3.2}
-                            style={{ animationDelay: `${point.mood * 30}ms` }}
+                            r={4}
+                            style={{ animationDelay: `${1120 + point.mood * 40}ms` }}
                             onMouseEnter={() => setHoverMoodCorrelation({ mood: point.mood, series: "intensity" })}
                             onMouseLeave={() => setHoverMoodCorrelation((prev) => (prev?.mood === point.mood && prev?.series === "intensity" ? null : prev))}
                             className="chart-point chart-point--mood-intensity"
@@ -1262,8 +1375,8 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                           <circle
                             cx={chart.toX(point.mood)}
                             cy={chart.toY(point.avgCravings)}
-                            r={3.2}
-                            style={{ animationDelay: `${point.mood * 30 + 80}ms` }}
+                            r={4}
+                            style={{ animationDelay: `${1200 + point.mood * 40}ms` }}
                             onMouseEnter={() => setHoverMoodCorrelation({ mood: point.mood, series: "count" })}
                             onMouseLeave={() => setHoverMoodCorrelation((prev) => (prev?.mood === point.mood && prev?.series === "count" ? null : prev))}
                             className="chart-point chart-point--mood-count"
@@ -1330,7 +1443,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card interpretation-card" style={{ ["--card-index" as string]: 6 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.interpretation = node;
+            }}
+            data-reveal-id="interpretation"
+            className={`dashboard-card interpretation-card insights-reveal${revealedCards.interpretation ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 6 }}
+          >
             <div className="card-header">
               <h3>Interpretation</h3>
               <span className="card-subtitle">Pattern note</span>
@@ -1343,7 +1463,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card ifthen-card" style={{ ["--card-index" as string]: 7 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.ifthen = node;
+            }}
+            data-reveal-id="ifthen"
+            className={`dashboard-card ifthen-card insights-reveal${revealedCards.ifthen ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 7 }}
+          >
             <div className="card-header">
               <h3>If-then insights</h3>
               <span className="card-subtitle">Graph-backed signals</span>
@@ -1359,7 +1486,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             )}
           </div>
 
-          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 8 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.deepdive = node;
+            }}
+            data-reveal-id="deepdive"
+            className={`dashboard-card deepdive-card insights-reveal${revealedCards.deepdive ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 8 }}
+          >
             <div className="card-header">
               <h3>Deep dives</h3>
               <span className="card-subtitle">Optional belief work</span>
@@ -1445,7 +1579,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
             </details>
           </div>
 
-          <div className="dashboard-card deepdive-card" style={{ ["--card-index" as string]: 9 }}>
+          <div
+            ref={(node) => {
+              revealRefs.current.ai = node;
+            }}
+            data-reveal-id="ai"
+            className={`dashboard-card deepdive-card insights-reveal${revealedCards.ai ? " is-visible" : ""}`}
+            style={{ ["--card-index" as string]: 9 }}
+          >
             <div className="card-header">
               <h3>AI interpreter</h3>
               <span className="card-subtitle">Planned premium layer</span>

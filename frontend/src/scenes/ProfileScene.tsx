@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { AuthTokens, AuthUser, OnboardingData, ProfileData, CurrencyCode } from "../app/types";
 import { useLocalStorage } from "../app/useLocalStorage";
 import { type QuitPlan } from "../app/quitLogic";
@@ -19,6 +20,7 @@ interface ProfileSceneProps {
     piecesPerBox: number | null,
     dailyAmount: number | null
   ) => Promise<void>;
+  onDeleteProfile: () => Promise<void>;
   entered?: boolean;
 }
 
@@ -43,9 +45,9 @@ type ApiErrorBody = {
   message?: string;
 };
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
-const ENABLE_TEST_TOOLS = String(import.meta.env.VITE_ENABLE_TEST_TOOLS ?? "")
+const TEST_TOOLS_FLAG = String(import.meta.env.VITE_ENABLE_TEST_TOOLS ?? "")
   .trim()
-  .toLowerCase() === "true";
+  .toLowerCase();
 
 const initialProfile: ProfileData = {
   displayName: "",
@@ -110,6 +112,7 @@ export default function ProfileScene({
   onAccountSave,
   onPasswordChange,
   onNicotineProfileSave,
+  onDeleteProfile,
   entered = false
 }: ProfileSceneProps) {
   const initialMode: ThemeMode =
@@ -143,6 +146,9 @@ export default function ProfileScene({
   const [unitPriceCurrencyDraft, setUnitPriceCurrencyDraft] = useState<CurrencyCode>(onboardingData.unitPriceCurrency);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [testActionMessage, setTestActionMessage] = useState("");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [passwordDraft, setPasswordDraft] = useState({ next: "", confirm: "" });
   const hasMin = passwordDraft.next.length >= 8;
   const hasUpper = /[A-Z]/.test(passwordDraft.next);
@@ -162,7 +168,10 @@ export default function ProfileScene({
     .trim()
     .toLowerCase()
     .match(/^(test|development)$/) !== null;
-  const showTestTools = ENABLE_TEST_TOOLS && isTestOrDevelopmentEnvironment;
+  const isTestToolsExplicitlyDisabled = TEST_TOOLS_FLAG === "false";
+  const isTestToolsExplicitlyEnabled = TEST_TOOLS_FLAG === "true";
+  const showTestTools =
+    isTestOrDevelopmentEnvironment && (isTestToolsExplicitlyEnabled || !isTestToolsExplicitlyDisabled);
 
   const signedInEmail = useMemo(() => authUser?.email || profile.email || "-", [authUser?.email, profile.email]);
   const signedInId = useMemo(() => authUser?.id || "-", [authUser?.id]);
@@ -475,6 +484,17 @@ export default function ProfileScene({
         : prev
     );
     setTestActionMessage("Progress reset to day 1. Backend and local logs cleared.");
+  };
+
+  const confirmDeleteProfile = async () => {
+    try {
+      setDeletePending(true);
+      setDeleteError("");
+      await onDeleteProfile();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Could not delete profile.");
+      setDeletePending(false);
+    }
   };
 
   return (
@@ -886,14 +906,45 @@ export default function ProfileScene({
             </div>
           </section>
 
-          {showTestTools ? (
-            <section className="profile-section" aria-labelledby="test-tools-title">
-              <div className="profile-section__header">
-                <p className="profile-section__kicker">Testing</p>
-                <h2 id="test-tools-title">Test tools</h2>
-                <p className="profile-section__note">Only visible in test environment.</p>
+          <section className="profile-section profile-section--danger" aria-labelledby="danger-zone-title">
+            <div className={`profile-split-head ${showTestTools ? "profile-split-head--two" : ""}`}>
+              <div className="profile-section__header profile-split-head__item">
+                <p className="profile-section__kicker">Danger zone</p>
+                <h2 id="danger-zone-title">Delete profile</h2>
+                <p className="profile-section__note">This permanently deletes your account and all related data.</p>
               </div>
-              <div className="dashboard-grid profile-grid">
+              {showTestTools ? (
+                <div className="profile-section__header profile-split-head__item">
+                  <p className="profile-section__kicker">Testing</p>
+                  <h2>Test tools</h2>
+                  <p className="profile-section__note">Local progress tools for test/development workflow.</p>
+                </div>
+              ) : null}
+            </div>
+            <div className={`dashboard-grid profile-grid ${showTestTools ? "profile-grid--test-danger" : ""}`}>
+              <div className="dashboard-card profile-card profile-card--danger" style={{ ["--card-index" as string]: 0 }}>
+                <div className="card-header">
+                  <h3>Permanent account deletion</h3>
+                  <span className="card-subtitle">This action cannot be undone</span>
+                </div>
+                <div className="profile-actions">
+                  <button
+                    type="button"
+                    className="ghost-button danger-button"
+                    onClick={() => {
+                      if (deletePending) return;
+                      setDeleteError("");
+                      setIsDeleteModalOpen(true);
+                    }}
+                    disabled={deletePending}
+                  >
+                    {deletePending ? "Deleting..." : "Delete profile"}
+                  </button>
+                  {deleteError ? <span className="profile-saved">{deleteError}</span> : null}
+                </div>
+              </div>
+
+              {showTestTools ? (
                 <div className="dashboard-card profile-card" style={{ ["--card-index" as string]: 0 }}>
                   <div className="card-header">
                     <h3>Progress simulator</h3>
@@ -909,11 +960,47 @@ export default function ProfileScene({
                   </div>
                   {testActionMessage ? <span className="profile-saved">{testActionMessage}</span> : null}
                 </div>
-              </div>
-            </section>
-          ) : null}
+              ) : null}
+            </div>
+          </section>
         </div>
       </div>
+
+      {isDeleteModalOpen
+        ? createPortal(
+            <div className="danger-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-profile-modal-title">
+              <div className="danger-modal">
+                <h3 id="delete-profile-modal-title">Are you sure you want to delete your profile?</h3>
+                <p>
+                  Deleting your profile removes your programs, diary entries, events, refresh tokens, and account record.
+                </p>
+                {deleteError ? <p className="profile-error">{deleteError}</p> : null}
+                <div className="danger-modal-actions">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => {
+                      if (deletePending) return;
+                      setIsDeleteModalOpen(false);
+                    }}
+                    disabled={deletePending}
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button danger-button"
+                    onClick={() => void confirmDeleteProfile()}
+                    disabled={deletePending}
+                  >
+                    {deletePending ? "Deleting..." : "Yes"}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

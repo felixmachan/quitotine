@@ -355,6 +355,11 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
                   style={{ ["--marker-pos" as string]: milestone.position }}
                 >
                   <div className="timeline-marker__dot" role="button" tabIndex={0} aria-label={milestone.title}>
+                    {milestone.state !== "future" ? (
+                      <span className="timeline-marker__check" aria-hidden="true">
+                        ✓
+                      </span>
+                    ) : null}
                     <span className="timeline-tooltip">
                       <span className="timeline-tooltip__day">Day {milestone.day}</span>
                       <strong>{milestone.title}</strong>
