@@ -119,6 +119,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
   const [moodChartView, setMoodChartView] = useState<ChartView>("1m");
   const [intensityChartView, setIntensityChartView] = useState<ChartView>("1m");
   const [timeDistributionView, setTimeDistributionView] = useState<ChartView>("1m");
+  const [moodCorrelationView, setMoodCorrelationView] = useState<ChartView>("1m");
   const [hoverCravingIndex, setHoverCravingIndex] = useState<number | null>(null);
   const [hoverMoodIndex, setHoverMoodIndex] = useState<number | null>(null);
   const [hoverIntensityIndex, setHoverIntensityIndex] = useState<number | null>(null);
@@ -456,6 +457,22 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
     () => journalEntries.reduce((latest, entry) => (entry.date > latest ? entry.date : latest), ""),
     [journalEntries]
   );
+  const moodCorrelationStartKey = useMemo(
+    () => getStartKeyForViewFromEnd(moodCorrelationView, latestDiaryDate || null),
+    [latestDiaryDate, moodCorrelationView]
+  );
+  const moodCorrelationJournalEntries = useMemo(() => {
+    if (!moodCorrelationStartKey) return journalEntries;
+    return journalEntries.filter(
+      (entry) => entry.date >= moodCorrelationStartKey && (!latestDiaryDate || entry.date <= latestDiaryDate)
+    );
+  }, [journalEntries, latestDiaryDate, moodCorrelationStartKey]);
+  const moodCorrelationCravingLogs = useMemo(() => {
+    if (!moodCorrelationStartKey) return effectiveCravingLogs;
+    return effectiveCravingLogs.filter(
+      (log) => log.date >= moodCorrelationStartKey && (!latestDiaryDate || log.date <= latestDiaryDate)
+    );
+  }, [effectiveCravingLogs, latestDiaryDate, moodCorrelationStartKey]);
   const timeDistributionStartKey = useMemo(
     () => getStartKeyForViewFromEnd(timeDistributionView, latestDiaryDate || null),
     [latestDiaryDate, timeDistributionView]
@@ -514,11 +531,13 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
 
   const cravingsByMoodSeries = useMemo(() => {
     const intensityByDate = new Map<string, { sum: number; count: number }>();
-    cravingLogs.forEach((log) => {
+    const cravingCountByDate = new Map<string, number>();
+    moodCorrelationCravingLogs.forEach((log) => {
       const prev = intensityByDate.get(log.date) ?? { sum: 0, count: 0 };
       prev.sum += log.intensity;
       prev.count += 1;
       intensityByDate.set(log.date, prev);
+      cravingCountByDate.set(log.date, (cravingCountByDate.get(log.date) ?? 0) + 1);
     });
 
     const grouped = new Map<number, { days: number; intensitySum: number; cravingCountSum: number }>();
@@ -526,7 +545,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
       grouped.set(mood, { days: 0, intensitySum: 0, cravingCountSum: 0 });
     }
 
-    journalEntries.forEach((entry) => {
+    moodCorrelationJournalEntries.forEach((entry) => {
       const mood = Math.max(0, Math.min(10, Math.round(entry.mood)));
       const dayIntensity = intensityByDate.get(entry.date);
       const avgIntensity = dayIntensity?.count ? dayIntensity.sum / dayIntensity.count : 0;
@@ -549,7 +568,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
       });
     }
     return series;
-  }, [cravingCountByDate, cravingLogs, journalEntries]);
+  }, [moodCorrelationCravingLogs, moodCorrelationJournalEntries]);
   const cravingsByMoodReady = useMemo(() => cravingsByMoodSeries.some((point) => point.days > 0), [cravingsByMoodSeries]);
   const cravingsByMoodFingerprint = useMemo(
     () =>
@@ -606,7 +625,7 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
 
   useEffect(() => {
     setHoverMoodCorrelation(null);
-  }, [cravingsByMoodFingerprint]);
+  }, [cravingsByMoodFingerprint, moodCorrelationView]);
 
   useEffect(() => {
     if (revealedCards.moodCorrelation && cravingsByMoodReady) {
@@ -1306,6 +1325,14 @@ export default function InsightsScene({ data, activeRoute, onNavigate, entered =
                 <h3>Cravings by mood</h3>
                 <span className="card-subtitle">Daily averages grouped by mood score</span>
               </div>
+              <label className="chart-view-control">
+                <span>View</span>
+                <select value={moodCorrelationView} onChange={(event) => setMoodCorrelationView(event.target.value as ChartView)}>
+                  <option value="1w">1 week</option>
+                  <option value="1m">1 month</option>
+                  <option value="all">All time</option>
+                </select>
+              </label>
             </div>
             {cravingsByMoodReady ? (
               <div className="chart-shell">

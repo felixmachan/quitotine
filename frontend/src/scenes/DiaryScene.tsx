@@ -25,14 +25,10 @@ export default function DiaryScene({ activeRoute, onNavigate, entered = false }:
 
   useEffect(() => {
     if (!authTokens?.accessToken) return;
-    const end = new Date();
-    const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
-    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}&end=${encodeURIComponent(
-      toIsoDate(end)
-    )}`;
-    const cravingsUrl = `${API_BASE}/events?event_type=craving&start=${encodeURIComponent(
-      start.toISOString()
-    )}&end=${encodeURIComponent(end.toISOString())}`;
+    const start = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);
+    // Keep full range from start date so test-seeded future days are visible.
+    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}`;
+    const cravingsUrl = `${API_BASE}/events?event_type=craving&start=${encodeURIComponent(start.toISOString())}`;
 
     void (async () => {
       try {

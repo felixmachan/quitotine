@@ -82,15 +82,11 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
 
   useEffect(() => {
     if (!authTokens?.accessToken) return;
-    const end = new Date();
-    const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const start = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);
 
-    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}&end=${encodeURIComponent(
-      toIsoDate(end)
-    )}`;
-    const cravingsUrl = `${API_BASE}/events?event_type=craving&start=${encodeURIComponent(
-      start.toISOString()
-    )}&end=${encodeURIComponent(end.toISOString())}`;
+    // Keep full range from the selected start date so test-seeded future days are visible.
+    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}`;
+    const cravingsUrl = `${API_BASE}/events?event_type=craving&start=${encodeURIComponent(start.toISOString())}`;
 
     void (async () => {
       try {
@@ -244,16 +240,44 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
 
   const planDayLabel = `${dayIndex} of ${activePlan.durationDays}`;
   const baselineLabel = `~${Math.round(activePlan.baselineMgPerDay)} mg/day`;
+  const addDaysToDate = (value: string | Date, days: number) => {
+    const date = typeof value === "string" ? new Date(value) : new Date(value.getTime());
+    date.setDate(date.getDate() + days);
+    return date;
+  };
+  const formatDateLabel = (value: Date) =>
+    value.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  const cleanDayDate = useMemo(
+    () => formatDateLabel(addDaysToDate(activePlan.startDate, activePlan.durationDays)),
+    [activePlan.durationDays, activePlan.startDate]
+  );
 
   const milestoneStates = useMemo(() => {
     const capped = getMilestones(activePlan.durationDays);
-    const currentIndex = capped.reduce((acc, milestone, index) => (milestone.day <= dayIndex ? index : acc), -1);
-    return capped.map((milestone, index) => ({
+    const hasFinalMilestone = capped.some((milestone) => milestone.day === activePlan.durationDays);
+    const withFinalMilestone = hasFinalMilestone
+      ? capped
+      : [
+          ...capped,
+          {
+            day: activePlan.durationDays,
+            title: "Clean day",
+            description: "Target completion date."
+          }
+        ];
+    const milestonesWithDate = withFinalMilestone
+      .sort((a, b) => a.day - b.day)
+      .map((milestone) => ({
+        ...milestone,
+        dateLabel: formatDateLabel(addDaysToDate(activePlan.startDate, milestone.day))
+      }));
+    const currentIndex = milestonesWithDate.reduce((acc, milestone, index) => (milestone.day <= dayIndex ? index : acc), -1);
+    return milestonesWithDate.map((milestone, index) => ({
       ...milestone,
       position: Math.min(1, milestone.day / activePlan.durationDays),
       state: index < currentIndex ? "past" : index === currentIndex ? "current" : "future"
     }));
-  }, [activePlan.durationDays, dayIndex]);
+  }, [activePlan.durationDays, activePlan.startDate, dayIndex]);
 
   const signal = useMemo(() => getAdaptiveSignal(journalEntries), [journalEntries]);
   const sortedEntries = useMemo(() => [...journalEntries].sort((a, b) => (a.date < b.date ? 1 : -1)), [journalEntries]);
@@ -342,6 +366,7 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
               </div>
               <div className="timeline-meta">
                 <span>{Math.round(progress * 100)}% complete</span>
+                <span>Clean day: {cleanDayDate}</span>
                 <span>Baseline {baselineLabel}</span>
               </div>
             </div>
@@ -350,7 +375,7 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
               <div className="timeline-now" aria-hidden="true" />
               {milestoneStates.map((milestone) => (
                 <div
-                  key={milestone.title}
+                  key={`${milestone.day}-${milestone.title}`}
                   className={`timeline-marker timeline-marker--${milestone.state}`}
                   style={{ ["--marker-pos" as string]: milestone.position }}
                 >
@@ -362,6 +387,7 @@ export default function DashboardScene({ data, activeRoute, onNavigate, entered 
                     ) : null}
                     <span className="timeline-tooltip">
                       <span className="timeline-tooltip__day">Day {milestone.day}</span>
+                      <span className="timeline-tooltip__day">{milestone.dateLabel}</span>
                       <strong>{milestone.title}</strong>
                       <em>{milestone.description}</em>
                       <button type="button" className="timeline-tooltip__link" onClick={() => onNavigate("/science")}>

@@ -194,11 +194,8 @@ export default function ScienceScene({ activeRoute, onNavigate, entered = false 
 
   useEffect(() => {
     if (!authTokens?.accessToken) return;
-    const end = new Date();
-    const start = new Date(end.getFullYear(), 0, 1, 0, 0, 0, 0);
-    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}&end=${encodeURIComponent(
-      toIsoDate(end)
-    )}`;
+    const start = new Date(new Date().getFullYear(), 0, 1, 0, 0, 0, 0);
+    const diaryUrl = `${API_BASE}/diary?start=${encodeURIComponent(toIsoDate(start))}`;
     void (async () => {
       try {
         const response = await fetch(diaryUrl, { headers: { Authorization: `Bearer ${authTokens.accessToken}` } });
